@@ -1,0 +1,929 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, user-scalable=no, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0">
+    <title>Hilo3d YUV 视频流渲染</title>
+    <link rel="stylesheet" href="css/animate.min.css">
+    <style type="text/css">
+    * {
+        -webkit-tap-highlight-color: rgba(0, 0, 0, 0);
+    }
+
+    html,
+    body {
+        padding: 0;
+        margin: 0;
+        overflow: hidden;
+    }
+
+    #container {
+        position: absolute;
+        width: 100%;
+        height: 100%;
+        top: 0;
+        left: 0;
+        overflow: hidden;
+    }
+
+    #result {
+        position: absolute;
+        left: 100px;
+        bottom: 10px;
+        color: red;
+        font-size: 20px;
+        display: none;
+    }
+
+    #back {
+        position: absolute;
+        left: 10px;
+        top: 10px;
+        z-index: 10000000;
+        width: 50px;
+        height: 50px;
+        text-align: center;
+    }
+
+    #guideLogo{
+        z-index: 10000;
+        position: absolute;
+        left: 50%;
+        margin-left: -256px;
+        top: 50%;
+        margin-top: -165px;
+        width: 70%;
+        pointer-events:none;
+        display: none;
+    }
+
+
+    </style>
+</head>
+
+<body>
+    <div id="container"></div>
+    <img id="guideLogo" src="https://gw.alicdn.com/tfs/TB1e7.skwoQMeJjy0FoXXcShVXa-1708-1020.png" />
+    <div id="result">XXXXX</div>
+    <!-- <div id="back">回首页</div> -->
+    <img id="back" src="UI/back.png"/>
+    <img id="start_up" style="position:absolute;width: 8%;bottom: 20px;left: 35%;"  src="UI/start.png"/>
+    <!-- <img id="start_down" style="position:absolute;width: 8%;bottom: 20px;left: 30%;display: none"  src="UI/double_down.png"/> -->
+
+    <img id="hint1" style="position:absolute;width: 35%;top: 30%;left: 3%;display: none" class="animated" src="UI/hint/1.png"/>
+    <img id="hint2" style="position:absolute;width: 35%;top: 30%;left: 3%;display: none" class="animated" src="UI/hint/2.png"/>
+    <img id="hint3" style="position:absolute;width: 42%;top: 30%;left: 2%;display: none" class="animated" src="UI/hint/3.png"/>
+
+    <img id="3D" style="position:absolute;width: 8%;bottom: 33px;right: 4%;display: block"  src="UI/3D.png"/>
+    <img id="AR" style="position:absolute;width: 8%;bottom: 33px;right: 4%;display: none"  src="UI/AR.png"/>
+
+    <div id="loading">
+        <img id="load_bg" style="position:absolute;width: 100%;height: 100%;display: block;z-index: 10001"  src="UI/loading.png"/>
+        <img id="load_gif" style="position:absolute;width: 8%;left: 44%;top: 40%;display: block;z-index: 10001"  src="UI/loading.gif"/>
+    </div>
+
+    <!--<script src="//g.alicdn.com/tmapp/animation-data/4.1.37/jc/tools/vconsole.min.js"></script>-->
+    <script src="//g.alicdn.com/hilo/Hilo3d/1.5.4/Hilo3d.js"></script>
+    <script src="./js/stats.js"></script>
+    <script src="//g.alicdn.com/tmapp/assetswho/1.0.9/js/SRTControls.js"></script>
+    <script src="//g.alicdn.com/tmapp/assetswho/1.0.9/js/OrbitControls.js"></script>
+    <script src="./js/arSetup57.js?t=91"></script>
+    <script src="./js/ARCamera.js?t=94"></script>
+
+    <script src="My_js/jquery.min.js"></script>
+    <script src="My_js/util.js"></script>
+
+    <script>
+
+    var ani_huangjiantou_state = false;
+    var ani_lanjiantou_state = false;
+    var obj_root;
+    var obj_huangse_arrows = [];
+    var obj_lanse_arrows = [];
+    var ori_huangse_pos = [];
+    var ori_lanse_pos = [];
+    var obj_waike1, obj_waike2;
+    var obj_lvxin, obj_taibang;
+    var obj_shuih1, obj_shuih2, obj_shui2, obj_shui3, obj_shui4, obj_shui5;
+    var obj_gaizi_1, obj_gaizi_2, bj_gaizi_3;
+
+    var mesh_waike1, mesh_waike2;
+    var mesh_lvxin, mesh_taibang;
+    var ori_shuih1_x, ori_shuih1_y;
+    var ori_shui2_x, ori_shui2_y;
+    var ori_shui3_x, ori_shui3_y;
+    var ori_shui4_x, ori_shui4_y;
+
+    var typeAr;
+
+    //判断打开方式
+    if(location.search.indexOf("typeAr") > -1){
+        typeAr = true;
+        $('#guideLogo').show();
+        $('#AR').hide();
+        $('#3D').show();
+    }else{
+        typeAr = false;
+        $('#guideLogo').hide();
+        $('#AR').show();
+        $('#3D').hide();
+    }
+    console.log(typeAr);
+
+    function loadingHide(){
+        $("#loading").hide();
+    }
+
+    function getImageArrayBuffer(cb){
+        var oReq = new XMLHttpRequest();
+        oReq.open("GET", "https://gw.alicdn.com/tfs/TB1oey2d6ihSKJjy0FfXXbGzFXa-1450-1552.png", true);
+        oReq.responseType = "arraybuffer";
+
+        oReq.onload = function(oEvent) {
+            var arrayBuffer = oReq.response; 
+            if (arrayBuffer) {
+                var dF = new Uint8Array(arrayBuffer);
+            }
+        };
+        oReq.send(null);
+    }
+
+    window.onload = function() {
+        function $(id) {
+            return document.getElementById(id);
+        }
+        var $result = $("result");
+        var $guideLogo = $("guideLogo");
+
+        $("back").onclick = function(e) {
+            window.location.href = "https://pages.tmall.com/wow/lafite/act/arscan?spm=a312d.7832054.0.0.568e255TbSwC5"
+        }
+
+
+        // 640 * 480相机->  854 * 640.5
+        var innerWidth = window.innerWidth;
+        var innerHeight = window.innerWidth * 480 / 640;
+
+
+        // var innerHeight = 510;
+
+        if(!typeAr){
+            var camera = new Hilo3d.PerspectiveCamera({
+                aspect: innerWidth / innerHeight,
+                far: 1000,
+                near: 0.1,
+                z: 600
+            });
+        }else if(typeAr){
+            var camera = new ARCamera();
+        }
+
+        var stage = new Hilo3d.Stage({
+            container: $('container'),
+            camera: camera,
+            clearColor: new Hilo3d.Color(0, 0, 0),
+            width: innerWidth,
+            height: innerHeight,
+            antialias :true
+        });
+
+        //854* 510
+        stage.viewport(0, 0, innerWidth, innerHeight);
+        stage.setOffset(0, 0);
+
+        console.log(window.innerWidth, window.innerHeight);
+
+
+        var renderer = stage.renderer;
+        var directionLight = new Hilo3d.DirectionalLight({
+            color: new Hilo3d.Color(0.7, 0.7, 0.7),
+            direction: new Hilo3d.Vector3(0, 1, -1),
+        }).addTo(stage);
+
+        var ambientLight = new Hilo3d.AmbientLight({
+            color: new Hilo3d.Color(1, 1, 1),
+            amount: .5
+        }).addTo(stage);
+
+        var ticker = new Hilo3d.Ticker(60);
+        window.g_ticker = ticker;
+        ticker.addTick(stage);
+        ticker.addTick(Hilo3d.Tween);
+        //ticker.addTick(Hilo3d.Animation);
+
+        //var stats = new Stats(ticker, stage.renderer.renderInfo);
+        renderer.clearColor = new Hilo3d.Color(0, 0, 0, 1);
+
+
+        var container = new Hilo3d.Node();
+        var geometry = new Hilo3d.PlaneGeometry({
+            width: 2.0,
+            height: 2.0,
+            heightSegments: 1,
+            widthSegments: 1,
+        })
+
+        var aa = [];
+        for (var i = 0; i < 64 * 48; i++) {
+            aa[i] = 0;
+        }
+        var dF = new Uint8Array(aa);
+
+        var mesh = new Hilo3d.Mesh({
+            rotationX: 0,
+            geometry: geometry,
+            material: new Hilo3d.ShaderMaterial({
+                depthWrite: false,
+                depthTest: false,
+                y_texture: new Hilo3d.DataTexture({
+                    internalFormat: Hilo3d.constants.LUMINANCE,
+                    format: Hilo3d.constants.LUMINANCE,
+                    type: Hilo3d.constants.UNSIGNED_BYTE,
+                    data: dF
+                }),
+                uv_texture: new Hilo3d.DataTexture({
+                    internalFormat: Hilo3d.constants.LUMINANCE_ALPHA,
+                    format: Hilo3d.constants.LUMINANCE_ALPHA,
+                    type: Hilo3d.constants.UNSIGNED_BYTE,
+                    data: dF
+                }),
+                uniforms: {
+                    u_y: {
+                        get: function(mesh, material, programInfo) {
+                            return Hilo3d.semantic.handlerColorOrTexture(material.y_texture, programInfo.textureIndex);;
+                        }
+                    },
+                    u_uv: {
+                        get: function(mesh, material, programInfo) {
+                            return Hilo3d.semantic.handlerColorOrTexture(material.uv_texture, programInfo.textureIndex);;
+                        }
+                    }
+                },
+                attributes: {
+                    a_position: 'POSITION',
+                    a_texcoord0: 'TEXCOORD_0'
+                },
+                fs: 'precision HILO_MAX_FRAGMENT_PRECISION float;\
+                    varying vec2 v_texcoord0;\
+                    uniform sampler2D u_y;\
+                    uniform sampler2D u_uv;\
+                    const mat3 mm =  mat3(1, 1, 1,0,-0.39465,  2.03211, 1.13983, -0.58060,  0);\
+                    void main(void) {\
+                        mediump vec3 yuv;\
+                        vec3 rgb;\
+                        vec2 yuv_textcoord = vec2(v_texcoord0.x, 1.0 - v_texcoord0.y);\
+                        yuv.x = (texture2D(u_y, yuv_textcoord).r);\
+                        yuv.y = (texture2D(u_uv, yuv_textcoord).r - 0.5);\
+                        yuv.z = (texture2D(u_uv, yuv_textcoord).a - 0.5);\
+                        rgb = mm * yuv;\
+                        gl_FragColor = vec4(rgb, 1);\
+                    }',
+                vs: 'precision HILO_MAX_VERTEX_PRECISION float;\
+                    attribute vec3 a_position;\
+                    attribute vec2 a_texcoord0;\
+                    varying vec2 v_texcoord0;\
+                    void main(void) {\
+                        vec4 pos = vec4(a_position.x, a_position.y, 1.0, 1.0);\
+                        gl_Position = pos;\
+                        v_texcoord0 = a_texcoord0;\
+                    }'
+            })
+        });
+ 
+        container.addChild(mesh);
+
+        var loader = new Hilo3d.GLTFLoader();
+        loader.load({
+            name: 'JPN',
+            useInstanced: true,
+            // src: 'https://ossgw.alicdn.com/tmall-c3/tmx/ed50b5a6135668f95d7559c0912922a7.gltf'
+            src: 'https://ossgw.alicdn.com/tmall-c3/tmx/65d55909730d24fa8051d213baa23115.gltf'
+        }).then(function(model) {
+            obj_root = model.node;
+
+
+            if(!typeAr){
+                obj_root.setScale(0.5);
+                obj_root.x = 25;
+                obj_root.y = 78;
+                obj_root.z = -81;
+                // obj_root.rotationX = 65;
+                // obj_root.rotationY = -0.65;
+            }else if(typeAr){
+                stage.setScale(0.07);
+                stage.x = -0.79;
+                stage.y = 6.25;
+                stage.z = 3.32;
+                stage.rotationX = 46.6;
+                stage.rotationY = -89.42;
+                stage.rotationZ = -39.76;
+            }
+
+
+            stage.addChild(obj_root);
+            obj_gaizi_1 = obj_root.getChildByName("gaizi_1");
+            obj_gaizi_2 = obj_root.getChildByName("gaizi_2");
+            obj_gaizi_3 = obj_root.getChildByName("gaizi_3");
+            console.log(obj_gaizi_1.children[0].material.specular);
+            // obj_gaizi_1.visible = false;
+            obj_gaizi_1.children[0].material.specular = new Hilo3d.Color(0.8, 0.8, 0.8);
+            obj_gaizi_1.children[0].material.shininess = 32;
+            obj_gaizi_1.children[0].material.emission = new Hilo3d.Color(0.02, 0.02, 0.02);
+            obj_gaizi_1.children[0].material.side = Hilo3d.constants.FRONT_AND_BACK;
+            obj_gaizi_2.children[0].material.specular = new Hilo3d.Color(0.8, 0.8, 0.8);
+            obj_gaizi_2.children[0].material.shininess = 32;
+            obj_gaizi_2.children[0].material.emission = new Hilo3d.Color(0.02, 0.02, 0.02);
+            obj_gaizi_3.children[0].material.specular = new Hilo3d.Color(0.8, 0.8, 0.8);
+            obj_gaizi_3.children[0].material.shininess = 32;
+            obj_gaizi_3.children[0].material.emission = new Hilo3d.Color(0.02, 0.02, 0.02);
+
+
+
+            obj_huangse_arrows.push(obj_root.getChildByName("jiantou_1"));
+            obj_huangse_arrows.push(obj_root.getChildByName("jiantou_2"));
+            obj_huangse_arrows.push(obj_root.getChildByName("jiantou_3"));
+            obj_huangse_arrows.push(obj_root.getChildByName("jiantou_4"));
+            obj_huangse_arrows.push(obj_root.getChildByName("jiantou_5"));
+            obj_huangse_arrows.push(obj_root.getChildByName("jiantou_6"));
+            obj_huangse_arrows.push(obj_root.getChildByName("jiantou_7"));
+            obj_huangse_arrows.push(obj_root.getChildByName("jiantou_8"));
+            obj_huangse_arrows.push(obj_root.getChildByName("jiantou_9"));
+            obj_huangse_arrows.push(obj_root.getChildByName("jiantou_10"));
+            obj_huangse_arrows.push(obj_root.getChildByName("jiantou_11"));
+            obj_huangse_arrows.push(obj_root.getChildByName("jiantou_12"));
+            obj_lanse_arrows.push(obj_root.getChildByName("jiantou_l1"));
+            obj_lanse_arrows.push(obj_root.getChildByName("jiantou_l2"));
+            obj_lanse_arrows.push(obj_root.getChildByName("jiantou_l3"));
+            obj_lanse_arrows.push(obj_root.getChildByName("jiantou_ll1"));
+            obj_lanse_arrows.push(obj_root.getChildByName("jiantou_ll2"));
+            obj_lanse_arrows.push(obj_root.getChildByName("jiantou_ll3"));
+            obj_lanse_arrows.push(obj_root.getChildByName("jiantou_ll4"));
+            obj_lanse_arrows.push(obj_root.getChildByName("jiantou_ll5"));
+            obj_lanse_arrows.push(obj_root.getChildByName("jiantou_ll6"));
+            obj_lanse_arrows.push(obj_root.getChildByName("jiantou_ll7"));
+            for (var i = 0; i < obj_huangse_arrows.length; i ++) {
+                obj_huangse_arrows[i].visible = false;
+                ori_huangse_pos.push({'x':obj_huangse_arrows[i].x, 'y':obj_huangse_arrows[i].y});
+                if (i >= 1) {
+                    obj_huangse_arrows[i].children[0].material = obj_huangse_arrows[0].children[0].material.clone();
+                }
+            }
+
+            for (var i = 0; i < obj_lanse_arrows.length; i ++) {
+                obj_lanse_arrows[i].visible = false;
+                ori_lanse_pos.push({'x':obj_lanse_arrows[i].x, 'y':obj_lanse_arrows[i].y});
+                if (i >= 1 && i <= 2) {
+                    obj_lanse_arrows[i].children[0].material = obj_lanse_arrows[0].children[0].material.clone();
+                } else if (i >= 4) {
+                    obj_lanse_arrows[i].children[0].material = obj_lanse_arrows[3].children[0].material.clone();
+                }
+            }
+            ori_lanse_pos[2].y -= 2.5;
+            ori_lanse_pos[3].y -= 2.5;
+            ori_lanse_pos[4].y -= 2.5;
+            ori_lanse_pos[5].y -= 2.5;
+            ori_lanse_pos[6].y -= 2.5;
+            ori_lanse_pos[7].y -= 2.5;
+            ori_lanse_pos[9].y -= 2.5;
+
+            obj_waike1 = obj_root.getChildByName("gaizi_quanbu");
+            obj_waike1.children[0].material.specular = new Hilo3d.Color(0.8, 0.8, 0.8);
+            obj_waike1.children[0].material.shininess = 32;
+            obj_waike1.children[0].material.emission = new Hilo3d.Color(0.02, 0.02, 0.02);
+            mesh_waike1 = obj_waike1.children[0];
+
+            obj_waike2 = obj_root.getChildByName("gaizi_zhuti");
+            //obj_waike2.children[0].material.specular = new Hilo3d.Color(0.9, 0.9, 0.9);
+            // obj_waike2.children[0].material.shininess = 100;
+            obj_waike2.children[0].material.emission = new Hilo3d.Color(0.02, 0.02, 0.02);
+            mesh_waike2 = obj_waike2.children[0];
+            //var obj_zhuti1 = obj_root.getChildByName("zhuti_ban1");
+            //obj_zhuti1.children[0].material = mesh_waike2.material.clone();
+
+            obj_lvxin = obj_root.getChildByName("lvxing_z");
+            mesh_lvxin = obj_lvxin.children[0];
+            obj_taibang = obj_root.getChildByName("tanbang_z");
+            mesh_taibang = obj_taibang.children[0];
+
+            obj_shuih1 = obj_root.getChildByName("shui_h1");
+            ori_shuih1_x = obj_shuih1.x;
+            ori_shuih1_y = obj_shuih1.y;
+            obj_shuih2 = obj_shuih1.clone();
+            obj_shuih2.name = "shui_h2";
+            obj_shuih2.addTo(obj_shuih1.parent);
+            obj_shuih1.visible = false;
+            obj_shuih2.visible = false;
+            //obj_shuih2.x = obj_shuih1.x + 10;
+            //obj_shuih2.y = 200;
+            //obj_shuih2.z = 150;
+            //obj_shuih2.setScale(40);
+
+            obj_shui2 = obj_root.getChildByName("shui_l1");
+            ori_shui2_x = obj_shui2.x;
+            ori_shui2_y = obj_shui2.y;
+            obj_shui2.visible = false;
+            obj_shui3 = obj_root.getChildByName("shui_ll1");
+            ori_shui3_x = obj_shui3.x;
+            ori_shui3_y = obj_shui3.y;
+            obj_shui3.visible = false;
+            obj_shui4 = obj_root.getChildByName("shui_ll2");
+            ori_shui4_x = obj_shui4.x;
+            ori_shui4_y = obj_shui4.y;
+            obj_shui4.visible = false;
+            obj_shui5 = obj_root.getChildByName("shui_ll3");
+            obj_shui5.visible = false;
+
+
+            // // new SRTControls(stage, {
+            // //     isLockMove: true,
+            // //     model: obj_xwj
+            // // });
+
+
+//            new SRTControls(stage,{
+//                model: obj_root
+//            });
+
+            if(typeAr){
+                //new SRTControls(stage);
+            }else{
+                new OrbitControls(stage,{
+                    isLockZ: true
+                })
+            }
+
+            //loading结束
+            setTimeout(loadingHide,2500);
+        });
+
+
+        stage.addChild(container);
+
+        function updateFrameData(frameData) {
+            if (frameData.length === 2) {
+                //640 * 480, 320 * 240
+                // console.log("updateFrameData pixelFormat:", frameData[0].format, frameData[1].format)
+                // console.log("updateFrameData", frameData[0].width,frameData[0].height,frameData[1].width,frameData[1].height);
+
+                mesh.material.y_texture.width = frameData[0].width;
+                mesh.material.y_texture.height = frameData[0].height;
+                mesh.material.y_texture.data = new Uint8Array(frameData[0].data);
+
+                mesh.material.uv_texture.width = frameData[0].width / 2;
+                mesh.material.uv_texture.height = frameData[0].height / 2;
+                mesh.material.uv_texture.data = new Uint8Array(frameData[1].data);
+
+
+                try{
+                    deR = JSON.parse(frameData[0].result);
+                }
+                catch (e){
+                    console.log(e);
+                }
+                
+
+                if (deR && deR.state == 2) {
+                    camera && camera.updateARMatrix(deR.viewMatrix, deR.projectionMatrix);
+                    $result.innerText = "识别到";
+                    $guideLogo.style.display = "none";
+                    if(typeAr){
+                        if (obj_root)
+                            obj_root.visible = true;
+                    }
+
+                } else {
+                    $result.innerText = "识别不到";
+
+                    if(typeAr){
+                        $guideLogo.style.display = "block";
+                        if (obj_root)
+                            obj_root.visible = false;
+                    }
+                }
+
+                //同步画相机.
+                ticker._tick();
+                // stage.tick();
+
+            }
+        }
+
+
+        var deR;
+
+
+
+
+        function start(result) {
+            console.log("EVENT_SESSION_START");
+            var detector = arSession.setDetector("MBTDetector");
+            detector.setMarkers([
+                "https://dtmall-tel.alicdn.com/minsk/online/fileware/201710/958c511d-c587-48ac-a44f-bef1e67e2d14"
+            ]);
+
+
+            animate();
+        }
+
+        registerAR(start, function(){})
+
+        function animate() {
+            if (arSession && arSession.isDirty) {
+
+
+                var frame = arSession.getCurrentFrames();
+                updateFrameData(frame);
+            }
+
+            requestAnimationFrame(animate);
+            // setTimeout(animate, 2000);
+        };
+
+        //画一帧.
+        // stage.tick();
+        if(!typeAr){
+            ticker.start(true);
+        }
+    }
+    </script>
+
+    <script>
+        var isAnimationOver = true;
+        $("#start_up").click(function() {
+            // $("#start_up").hide();
+            // $("#start_down").show();
+
+            if (isAnimationOver) {
+                isAnimationOver = false;
+                waikeAniStart();
+                $('#hint1').show();
+                $('#hint1').addClass('fadeInLeft');
+            }
+        });
+        function hScale(i, dx, dy, delay) {
+            obj_huangse_arrows[i].scaleX = obj_huangse_arrows[i].scaleY = 0.0;
+            obj_huangse_arrows[i].x = ori_huangse_pos[i].x;
+            obj_huangse_arrows[i].y = ori_huangse_pos[i].y;
+            obj_huangse_arrows[i].children[0].material.transparency = 1.0;
+            Hilo3d.Tween.to(obj_huangse_arrows[i], {scaleX: 1.0, scaleY: 1.0, x: obj_huangse_arrows[i].x + dx, y: obj_huangse_arrows[i].y + dy},
+                 {duration: 1000, delay: delay,
+                onComplete: function() {
+                    hHide(i, dx, dy);
+                }});
+        }
+        function hHide(i, dx, dy) {
+            obj_huangse_arrows[i].transparent = true;
+            Hilo3d.Tween.to(obj_huangse_arrows[i].children[0].material, {transparency:0}, {duration:1000, delay:0,
+                onComplete: function() {
+                    if (ani_huangjiantou_state) {
+                        hScale(i, dx, dy, 0);
+                    }
+                }});
+        }
+        function huangJianTouAniStart() {
+            ani_huangjiantou_state = true;
+            for (var i = 0; i < obj_huangse_arrows.length; i ++) {
+                obj_huangse_arrows[i].visible = true;
+                obj_huangse_arrows[i].scaleX = obj_huangse_arrows[i].scaleY = 0.0;
+                obj_huangse_arrows[i].x = ori_huangse_pos[i].x;
+                obj_huangse_arrows[i].y = ori_huangse_pos[i].y;
+            }
+            // hScale(0, 0.5, 0.0, 200);
+            // hScale(1, 0.0, -0.5, 1000);
+            // hScale(2, -0.5, 0.0, 1500);
+            // hScale(3, 0.5, 0.0, 1500);
+            // hScale(4, 0.0, -0.5, 2500);
+            // hScale(5, 0.0, -0.5, 2500);
+            // hScale(6, 0.0, -0.5, 3300);
+            // hScale(7, 0.0, -0.5, 3300);
+            // hScale(8, 0.0, -0.5, 4300);
+            // hScale(9, 0.0, -0.5, 4300);
+            // hScale(10, 0.5, 0.0, 5200);
+            // hScale(11, -0.5, 0.0, 5200);
+            hScale(0, 0.5, 0.0, 0);
+            hScale(1, 0.0, -0.5, 0);
+            hScale(2, -0.3, 0.0, 0);
+            hScale(3, 0.3, 0.0, 0);
+            hScale(4, 0.0, -3.5,0);
+            hScale(5, 0.0, -3.5, 0);
+            hScale(6, 0.0, -3.5, 0);
+            hScale(7, 0.0, -3.5, 0);
+            hScale(8, 0.0, -0.5, 0);
+            hScale(9, 0.0, -0.5, 0);
+            hScale(10, 0.5, 0.0, 0);
+            hScale(11, -0.5, 0.0, 0);
+            // Hilo3d.Tween.to(obj_huangse_arrows[1], {scaleX: 1.0, scaleY: 1.0}, {duration: 500, delay: 1000});
+            // Hilo3d.Tween.to(obj_huangse_arrows[2], {scaleX: 1.0, scaleY: 1.0}, {duration: 500, delay: 1500});
+            // Hilo3d.Tween.to(obj_huangse_arrows[3], {scaleX: 1.0, scaleY: 1.0}, {duration: 500, delay: 1500});
+            // Hilo3d.Tween.to(obj_huangse_arrows[4], {scaleX: 1.0, scaleY: 1.0}, {duration: 500, delay: 2500});
+            // Hilo3d.Tween.to(obj_huangse_arrows[5], {scaleX: 1.0, scaleY: 1.0}, {duration: 500, delay: 2500});
+            // Hilo3d.Tween.to(obj_huangse_arrows[6], {scaleX: 1.0, scaleY: 1.0}, {duration: 500, delay: 3300});
+            // Hilo3d.Tween.to(obj_huangse_arrows[7], {scaleX: 1.0, scaleY: 1.0}, {duration: 500, delay: 3300});
+            // Hilo3d.Tween.to(obj_huangse_arrows[8], {scaleX: 1.0, scaleY: 1.0}, {duration: 500, delay: 4300});
+            // Hilo3d.Tween.to(obj_huangse_arrows[9], {scaleX: 1.0, scaleY: 1.0}, {duration: 500, delay: 4300});
+            // Hilo3d.Tween.to(obj_huangse_arrows[10],{scaleX: 1.0, scaleY: 1.0}, {duration: 500, delay: 5200});
+            // Hilo3d.Tween.to(obj_huangse_arrows[11],{scaleX: 1.0, scaleY: 1.0, x: obj_huangse_arrows[11].x -0.5}, {duration: 500, delay: 5200,
+            Hilo3d.Tween.to(obj_huangse_arrows[11],{y: obj_huangse_arrows[11].y}, {duration: 500, delay: 5200,
+                onComplete: function() {
+                    lanJianTouAniStart();
+                }});
+        }
+        function lScale(i, dx, dy, delay) {
+            obj_lanse_arrows[i].scaleX = obj_lanse_arrows[i].scaleY = 0.0;
+            obj_lanse_arrows[i].x = ori_lanse_pos[i].x;
+            obj_lanse_arrows[i].y = ori_lanse_pos[i].y;
+            obj_lanse_arrows[i].children[0].material.transparency = 1.0;
+            Hilo3d.Tween.to(obj_lanse_arrows[i], {scaleX: 1.0, scaleY: 1.0, x: obj_lanse_arrows[i].x + dx, y: obj_lanse_arrows[i].y + dy},
+                 {duration: 1000, delay: delay,
+                onComplete: function() {
+                    lHide(i, dx, dy);
+                }});
+        }
+        function lHide(i, dx, dy) {
+            obj_lanse_arrows[i].children[0].material.transparent = true;
+            Hilo3d.Tween.to(obj_lanse_arrows[i].children[0].material, {transparency:0}, {duration:1000, delay:0,
+                onComplete: function() {
+                    if (ani_lanjiantou_state) {
+                        lScale(i, dx, dy, 0);
+                    }
+                }});
+        }
+        function lanJianTouAniStart() {
+            ani_lanjiantou_state = true;
+            for (var i = 0; i < obj_lanse_arrows.length; i ++) {
+                obj_lanse_arrows[i].visible = true;
+                obj_lanse_arrows[i].scaleX = obj_lanse_arrows[i].scaleY = 0.0;
+                obj_lanse_arrows[i].x = ori_lanse_pos[i].x;
+                obj_lanse_arrows[i].y = ori_lanse_pos[i].y;
+            }
+            lScale(0, -0.5, 0.0, 0);
+            lScale(1, 0.5, 0.0, 0);
+            lScale(2, 0.0, 3.5, 0);
+            lScale(3, 0.0, 2.5, 0);
+            lScale(4, 0.0, 2.5, 0);
+            lScale(5, 0.0, 2.5, 0);
+            lScale(6, 0.0, 2.5, 0);
+            lScale(7, 0.0, 2.0, 0);
+            lScale(9, 0.0, 2.0, 0);
+            lScale(8, 1.0, 0.0, 0);
+            // Hilo3d.Tween.to(obj_lanse_arrows[0], {scaleX: 1.0, scaleY: 1.0}, {duration: 500, delay: 200});
+            // Hilo3d.Tween.to(obj_lanse_arrows[1], {scaleX: 1.0, scaleY: 1.0}, {duration: 500, delay: 200});
+            // Hilo3d.Tween.to(obj_lanse_arrows[2], {scaleX: 1.0, scaleY: 1.0}, {duration: 500, delay: 1500});
+            // Hilo3d.Tween.to(obj_lanse_arrows[3], {scaleX: 1.0, scaleY: 1.0}, {duration: 500, delay: 2500});
+            // Hilo3d.Tween.to(obj_lanse_arrows[4], {scaleX: 1.0, scaleY: 1.0}, {duration: 500, delay: 2500});
+            // Hilo3d.Tween.to(obj_lanse_arrows[5], {scaleX: 1.0, scaleY: 1.0}, {duration: 500, delay: 3500});
+            // Hilo3d.Tween.to(obj_lanse_arrows[6], {scaleX: 1.0, scaleY: 1.0}, {duration: 500, delay: 3500});
+            // Hilo3d.Tween.to(obj_lanse_arrows[7], {scaleX: 1.0, scaleY: 1.0}, {duration: 500, delay: 4500});
+            // Hilo3d.Tween.to(obj_lanse_arrows[9], {scaleX: 1.0, scaleY: 1.0}, {duration: 500, delay: 4500});
+            // Hilo3d.Tween.to(obj_lanse_arrows[8], {scaleX: 1.0, scaleY: 1.0}, {duration: 500, delay: 6000});
+        }
+        function waikeAniStart() {
+            ani_huangjiantou_state = false;
+            ani_lanjiantou_state = false;
+            mesh_waike1.material.transparent = true;
+            mesh_waike2.material.transparent = true;
+            mesh_waike1.material.transparency = 1.0;
+            mesh_waike2.material.transparency = 1.0;
+            mesh_lvxin.material.transparency = 1.0;
+            mesh_taibang.material.transparency = 1.0;
+            obj_shui4.visible = false;
+            console.log("visible = false");
+            for (var i = 0; i < obj_huangse_arrows.length; i ++) {
+                obj_huangse_arrows[i].visible = false;
+            }
+            for (var i = 0; i < obj_lanse_arrows.length; i ++) {
+                obj_lanse_arrows[i].visible = false;
+            }
+            Hilo3d.Tween.to(mesh_waike1.material, {transparency:0.0}, {duration: 1500, delay:0,
+                onComplete: function() {
+                    neibuAniStart();
+                }
+            });
+            Hilo3d.Tween.to(mesh_waike2.material, {transparency:0.0}, {duration: 1500, delay:0,
+                onComplete: function() {
+
+                }
+            });
+        }
+        function neibuAniStart() {
+            mesh_lvxin.material.transparent = true;
+            mesh_taibang.material.transparent = true;
+            // Hilo3d.Tween.to(mesh_lvxin.material, {transparency:0.0}, {duration: 1500, delay:1000,
+            //     onComplete: function() {
+            //         h2oStart();
+            //     }
+            // });
+            neibuLvxinAniStart();
+            Hilo3d.Tween.to(mesh_taibang.material, {transparency:0.0}, {duration: 1500, delay:1000,
+                onComplete: function() {
+                    h2oStart();
+                }
+            });
+        }
+        function neibuLvxinAniStart() {
+            Hilo3d.Tween.to(mesh_lvxin.material, {transparency:0.0}, {duration: 1500, delay:1000,
+                onComplete: function() {
+                }
+            });
+        }
+        function h2oStart() {
+            //obj_shuih1.x = ori_shuih1_x;
+            //obj_shuih1.y = ori_shuih1_y;
+            //obj_shuih1.visible = true;
+            //var mesh_shuih1 = obj_shuih1.children[0];
+            //mesh_shuih1.material.transparent = true;
+            //mesh_shuih1.material.transparency = 1.0;
+            //obj_shui4.visible = false;
+            //Hilo3d.Tween.to(mesh_shuih1.material, {transparency:0.0}, {duration: 50, delay: 0,
+            //    onComplete: function() {
+            //        h2oMoveRight();
+            //    }
+            //});
+            h2oMoveRight();
+        }
+        function h2oMoveRight() {
+            obj_shuih1.x = ori_shuih1_x;
+            obj_shuih1.y = ori_shuih1_y;
+            obj_shui2.x = ori_shui2_x;
+            obj_shui2.y = ori_shui2_y;
+            obj_shui3.x = ori_shui3_x;
+            obj_shui3.y = ori_shui3_y;
+            obj_shui4.x = ori_shui4_x;
+            obj_shui4.y = ori_shui4_y;
+            obj_shuih1.visible = true;
+            obj_shuih2.visible = false;
+            obj_shui4.visible = false;
+            // if (!ani_started) {
+                // ani_started = true;
+                huangJianTouAniStart();
+            // } else {
+                // for (var i = 0; i < obj_huangse_arrows.length; i ++) {
+                    // obj_huangse_arrows[i].visible = true;
+                // }
+            // }
+            
+            // var animation = new Hilo3d.Animation();
+            // animation.addClip('clip', 0, 2000);
+            // window.g_ticker.addTick(animation);
+            // animation.play();
+            // console.log(animation.clips);
+            // console.log(animation.timeScale);
+            // animation.timeScale = 1;
+            Hilo3d.Tween.to(obj_shuih1, {x: 0}, {duration: 1500, delay: 0,
+                onComplete: function() {
+                    h2oDown1();
+                }
+            });
+        }
+        function h2oDown1() {
+            Hilo3d.Tween.to(obj_shuih1, {y: 7.2}, {duration: 1300, delay: 0,
+                onComplete: function() {
+                    h2oSide();
+                }
+            });
+        }
+        function h2oSide() {
+            obj_shuih2.visible = true;
+            obj_shuih2.x = obj_shuih1.x;
+            obj_shuih2.y = obj_shuih1.y;
+            Hilo3d.Tween.to(obj_shuih2, {x: 2}, {duration: 1000, delay: 0,
+                onComplete: function() {
+                }
+            });
+            Hilo3d.Tween.to(obj_shuih1, {x: -2}, {duration: 1000, delay: 0,
+                onComplete: function() {
+                    h2oDown2();
+                }
+            });
+        }
+        function h2oDown2() {
+            Hilo3d.Tween.to(obj_shuih1, {y: -8}, {duration: 3500, delay: 0,
+                onComplete: function() {
+                    for (var i = 0; i < obj_lanse_arrows.length; i ++) {
+                        obj_lanse_arrows[i].visible = true;
+                    }
+                    h2oCenter();
+                }
+            });
+            Hilo3d.Tween.to(obj_shuih2, {y: -8}, {duration: 3500, delay: 0,
+                onComplete: function() {
+                }
+            });
+        }
+        function h2oCenter() {
+            Hilo3d.Tween.to(obj_shuih1, {x: 0}, {duration: 1000, delay: 0,
+                onComplete: function() {
+                    obj_shuih1.visible = false;
+                    obj_shuih2.visible = false;
+                    obj_shui2.visible = true;
+                    obj_shui2.x = obj_shuih1.x;
+                    obj_shui2.y = obj_shuih1.y;
+                    // for(var i = 0; i < obj_huangse_arrows.length; i ++) {
+                    //     obj_huangse_arrows[i].visible = false;
+                    // }
+                    $('#hint1').addClass('fadeOut');
+                    $('#hint1').one('webkitAnimationEnd mozAnimationEnd MSAnimationEnd oanimationend animationend', function(){
+                        $('#hint1').hide();
+                        $('#hint1').removeClass('fadeInLeft fadeOut');
+                        $('#hint1').unbind();
+                    })
+                    $('#hint2').show();
+                    $('#hint2').addClass('fadeIn');
+                    setTimeout(function(){
+                        h2oUp1();
+                    },3000);
+                    // neibuLvxinAniStart();
+                }
+            });
+            Hilo3d.Tween.to(obj_shuih2, {x: 0}, {duration: 1000, delay: 0,
+                onComplete: function() {
+                    obj_shuih2.visible = false;
+                }
+            });
+        }
+        function h2oUp1() {
+            Hilo3d.Tween.to(obj_shui2, {y: -1}, {duration: 2000, delay: 0,
+                onComplete: function() {
+                    obj_shui2.visible = false;
+                    obj_shui3.visible = true;
+                    obj_shui3.x = obj_shui2.x;
+                    obj_shui3.y = obj_shui2.y;
+
+                    $('#hint2').addClass('fadeOut');
+                    $('#hint2').one('webkitAnimationEnd mozAnimationEnd MSAnimationEnd oanimationend animationend', function(){
+                        $('#hint2').hide();
+                        $('#hint2').removeClass('fadeIn fadeOut');
+                        $('#hint2').unbind();
+                    })
+                    $('#hint3').show();
+                    $('#hint3').addClass('fadeIn');
+
+                    setTimeout(function(){
+                        h2oUp2();
+                    },3000);
+                }
+            });
+        }
+        function h2oUp2() {
+            Hilo3d.Tween.to(obj_shui3, {y: obj_shui4.y}, {duration: 3500, delay: 0,
+                onComplete: function() {
+                    obj_shui3.visible = false;
+                    obj_shui4.visible = true;
+                    h2oOut();
+                }
+            });
+        }
+        function h2oUp3() {
+            Hilo3d.Tween.to(obj_shui3, {y: obj_shui4.y}, {duration: 1500, delay: 0,
+                onComplete: function() {
+                    obj_shui3.visible = false;
+                    obj_shui4.visible = true;
+                    h2oOut();
+                }
+            });
+        }
+        function h2oOut() {
+            Hilo3d.Tween.to(obj_shui4, {x: obj_shui5.x}, {duration: 1500, delay: 0,
+                onComplete: function() {
+                    window.g_ticker.removeTick(Hilo3d.Animation);
+                    //obj_shui4.visible = false;
+                    // h2oStart();
+                    // for(var i = 0; i < obj_lanse_arrows.length; i ++) {
+                    //     obj_lanse_arrows[i].visible = false;
+                    // }
+                    $('#hint3').addClass('fadeOutLeft');
+                    $('#hint3').one('webkitAnimationEnd mozAnimationEnd MSAnimationEnd oanimationend animationend', function(){
+                        $('#hint3').hide();
+                        $('#hint3').removeClass('fadeIn fadeOutLeft');
+                        $('#hint3').unbind();
+                        animationOver();
+                    })
+
+                }
+            });
+        }
+        function animationOver() {
+            // $("#start_up").show();
+            // $("#start_down").hide();
+            isAnimationOver = true;
+        }
+
+
+        $('#AR').click(function(){
+            var old_url = window.location.href;
+            var new_url = old_url.split("?")[0] + '?typeAr';
+            console.log(new_url);
+            window.location.href = new_url;
+        })
+
+        $('#3D').click(function(){
+            var old_url = window.location.href;
+            var new_url = old_url.split("?")[0];
+            console.log(new_url);
+            window.location.href = new_url;
+        })
+    </script>
+</body>
+
+</html>

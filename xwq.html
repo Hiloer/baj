@@ -1,0 +1,778 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, user-scalable=no, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0">
+    <title>Hilo3d YUV 视频流渲染</title>
+    <link rel="stylesheet" href="css/animate.min.css">
+    <style type="text/css">
+    * {
+        -webkit-tap-highlight-color: rgba(0, 0, 0, 0);
+    }
+
+    html,
+    body {
+        padding: 0;
+        margin: 0;
+        overflow: hidden;
+    }
+
+    #container {
+        position: absolute;
+        width: 100%;
+        height: 100%;
+        top: 0;
+        left: 0;
+        overflow: hidden;
+    }
+
+    #result {
+        position: absolute;
+        left: 100px;
+        bottom: 10px;
+        color: red;
+        font-size: 20px;
+        display: none;
+    }
+
+   #back {
+        position: absolute;
+        left: 10px;
+        top: 10px;
+        z-index: 10000000;
+        width: 50px;
+        height: 50px;
+        text-align: center;
+    }
+   
+    #guideLogo{
+        z-index: 10000;
+        position: absolute;
+        left: 50%;
+        margin-left: -275px;
+        top: 50%;
+        margin-top: -178px;
+        width: 70%;
+        pointer-events:none;
+        display: none;
+    }
+
+
+    </style>
+</head>
+
+<body>
+    <div id="container"></div>
+    <img id="guideLogo" src="https://gw.alicdn.com/tfs/TB1SCb1nMMPMeJjy1XcXXXpppXa-1708-1020.png" >
+    <div id="result">XXXXX</div>
+    <!-- <div id="back">回首页</div> -->
+    <img id="back" src="UI/back.png"/>
+
+    <img id="btn1_up" style="position:absolute;width: 8%;bottom: 20px;left: 30%;"  src="UI/double_up.png"/>
+    <img id="btn1_down" style="position:absolute;width: 8%;bottom: 20px;left: 30%;display: none"  src="UI/double_down.png"/>
+
+    <img id="btn2_up" style="position:absolute;width: 8%;bottom: 20px;left: 60%;"  src="UI/onflow_up.png"/>
+    <img id="btn2_down" style="position:absolute;width: 8%;bottom: 20px;left: 60%;display: none"  src="UI/onflow_down.png"/>
+
+    <img id="hint1" style="position:absolute;width: 35%;top: 20px;left: 30%;display: none;" class="animated"  src="UI/hint1.png"/>
+    <img id="hint2" style="position:absolute;width: 47%;top: 20px;left: 27%;display: none;" class="animated"  src="UI/hint2.png"/>
+
+    <img id="3D" style="position:absolute;width: 8%;bottom: 33px;right: 4%;display: block"  src="UI/3D.png"/>
+    <img id="AR" style="position:absolute;width: 8%;bottom: 33px;right: 4%;display: none"  src="UI/AR.png"/>
+
+    <div id="loading">
+        <img id="load_bg" style="position:absolute;width: 100%;height: 100%;display: block;z-index: 10001"  src="UI/loading.png"/>
+        <img id="load_gif" style="position:absolute;width: 8%;left: 44%;top: 40%;display: block;z-index: 10001"  src="UI/loading.gif"/>
+    </div>
+
+
+    <!--<script src="//g.alicdn.com/tmapp/animation-data/4.1.37/jc/tools/vconsole.min.js"></script>-->
+    <script src="//g.alicdn.com/hilo/Hilo3d/1.5.4/Hilo3d.js"></script>
+    <script src="./js/stats.js"></script>
+    <script src="//g.alicdn.com/tmapp/assetswho/1.0.9/js/SRTControls.js"></script>
+    <script src="//g.alicdn.com/tmapp/assetswho/1.0.9/js/OrbitControls.js"></script>
+    <script src="./js/arSetup57.js?t=91"></script>
+    <script src="./js/ARCamera.js?t=94"></script>
+
+    <script src="My_js/jquery.min.js"></script>
+    <script src="My_js/util.js"></script>
+
+    <script>
+
+    var obj_xwj;   //洗碗机obj
+    var obj_uv;    //控制uv
+    var obj_uvpng; //uv图标
+    var obj_uvpng2; //第二个圈
+    var obj_water; //水层
+    var obj_wanjia; //碗架
+    var obj_fruit;  //水果
+    var obj_blinn; //闪烁
+    var obj_chaoshengbo;  //超声波
+    var obj_gaizi; //盖子
+
+
+    var mesh_honggan; //烘干mesh
+    var mesh_pan; //盘子
+    var mesh_uvpng;
+    var mesh_wood;
+
+
+    var click_flag = true;
+    var typeAr;
+
+
+    //判断打开方式
+    if(location.search.indexOf("typeAr") > -1){
+        typeAr = true;
+        $('#guideLogo').show();
+        $('#AR').hide();
+        $('#3D').show();
+    }else{
+        typeAr = false;
+        $('#guideLogo').hide();
+        $('#AR').show();
+        $('#3D').hide();
+    }
+    console.log(typeAr);
+
+    function loadingHide(){
+        $("#loading").hide();
+    }
+
+    function getImageArrayBuffer(cb){
+        var oReq = new XMLHttpRequest();
+        oReq.open("GET", "https://gw.alicdn.com/tfs/TB1oey2d6ihSKJjy0FfXXbGzFXa-1450-1552.png", true);
+        oReq.responseType = "arraybuffer";
+
+        oReq.onload = function(oEvent) {
+            var arrayBuffer = oReq.response;
+            if (arrayBuffer) {
+                var dF = new Uint8Array(arrayBuffer);
+            }
+        };
+        oReq.send(null);
+    }
+
+
+    window.onload = function() {
+        function $(id) {
+            return document.getElementById(id);
+        }
+        var $result = $("result");
+        var $guideLogo = $("guideLogo");
+
+        $("back").onclick = function(e) {
+            window.location.href = "https://pages.tmall.com/wow/lafite/act/arscan?spm=a312d.7832054.0.0.568e255TbSwC5"
+        }
+
+        // 640 * 480相机->  854 * 640.5
+        var innerWidth = window.innerWidth;
+        var innerHeight = window.innerWidth * 480 / 640;
+
+
+        // var innerHeight = 510;
+
+        if(!typeAr){
+            var camera = new Hilo3d.PerspectiveCamera({
+                aspect: innerWidth / innerHeight,
+                far: 10000,
+                near: 0.1,
+                z: 1100
+            });
+        }else if(typeAr){
+            var camera = new ARCamera();
+        }
+
+        var stage = new Hilo3d.Stage({
+            container: $('container'),
+            camera: camera,
+            clearColor: new Hilo3d.Color(0, 0, 0),
+            width: innerWidth,
+            height: innerHeight,
+            antialias :true
+        });
+
+        //854* 510
+        stage.viewport(0, 0, innerWidth, innerHeight);
+        stage.setOffset(0, 0);
+
+        console.log(window.innerWidth, window.innerHeight);
+
+
+        var renderer = stage.renderer;
+        var directionLight = new Hilo3d.DirectionalLight({
+            color: new Hilo3d.Color(1, 0.96, 0.85),
+            direction: new Hilo3d.Vector3(0, -1, -1),
+        }).addTo(stage);
+
+        var ambientLight = new Hilo3d.AmbientLight({
+            color: new Hilo3d.Color(1, 0.96, 0.85),
+            amount: .5
+        }).addTo(stage);
+
+        ticker = new Hilo3d.Ticker(60);
+        ticker.addTick(stage);
+        ticker.addTick(Hilo3d.Tween);
+        ticker.addTick(Hilo3d.Animation);
+
+        //var stats = new Stats(ticker, stage.renderer.renderInfo);
+        renderer.clearColor = new Hilo3d.Color(0, 0, 0, 1);
+
+
+        var container = new Hilo3d.Node();
+        var geometry = new Hilo3d.PlaneGeometry({
+            width: 2.0,
+            height: 2.0,
+            heightSegments: 1,
+            widthSegments: 1,
+        })
+
+        var aa = [];
+        for (var i = 0; i < 64 * 48; i++) {
+            aa[i] = 0;
+        }
+        var dF = new Uint8Array(aa);
+
+
+        var mesh = new Hilo3d.Mesh({
+            rotationX: 0,
+            geometry: geometry,
+            material: new Hilo3d.ShaderMaterial({
+                depthWrite: false,
+                depthTest: false,
+                y_texture: new Hilo3d.DataTexture({
+                    internalFormat: Hilo3d.constants.LUMINANCE,
+                    format: Hilo3d.constants.LUMINANCE,
+                    type: Hilo3d.constants.UNSIGNED_BYTE,
+                    data: dF
+                }),
+                uv_texture: new Hilo3d.DataTexture({
+                    internalFormat: Hilo3d.constants.LUMINANCE_ALPHA,
+                    format: Hilo3d.constants.LUMINANCE_ALPHA,
+                    type: Hilo3d.constants.UNSIGNED_BYTE,
+                    data: dF
+                }),
+                uniforms: {
+                    u_y: {
+                        get: function(mesh, material, programInfo) {
+                            return Hilo3d.semantic.handlerColorOrTexture(material.y_texture, programInfo.textureIndex);;
+                        }
+                    },
+                    u_uv: {
+                        get: function(mesh, material, programInfo) {
+                            return Hilo3d.semantic.handlerColorOrTexture(material.uv_texture, programInfo.textureIndex);;
+                        }
+                    }
+                },
+                attributes: {
+                    a_position: 'POSITION',
+                    a_texcoord0: 'TEXCOORD_0'
+                },
+                fs: 'precision HILO_MAX_FRAGMENT_PRECISION float;\
+                    varying vec2 v_texcoord0;\
+                    uniform sampler2D u_y;\
+                    uniform sampler2D u_uv;\
+                    const mat3 mm =  mat3(1, 1, 1,0,-0.39465,  2.03211, 1.13983, -0.58060,  0);\
+                    void main(void) {\
+                        mediump vec3 yuv;\
+                        vec3 rgb;\
+                        vec2 yuv_textcoord = vec2(v_texcoord0.x, 1.0 - v_texcoord0.y);\
+                        yuv.x = (texture2D(u_y, yuv_textcoord).r);\
+                        yuv.y = (texture2D(u_uv, yuv_textcoord).r - 0.5);\
+                        yuv.z = (texture2D(u_uv, yuv_textcoord).a - 0.5);\
+                        rgb = mm * yuv;\
+                        gl_FragColor = vec4(rgb, 1);\
+                    }',
+                vs: 'precision HILO_MAX_VERTEX_PRECISION float;\
+                    attribute vec3 a_position;\
+                    attribute vec2 a_texcoord0;\
+                    varying vec2 v_texcoord0;\
+                    void main(void) {\
+                        vec4 pos = vec4(a_position.x, a_position.y, 1.0, 1.0);\
+                        gl_Position = pos;\
+                        v_texcoord0 = a_texcoord0;\
+                    }'
+            })
+        });
+        container.addChild(mesh);
+
+        var loader = new Hilo3d.GLTFLoader();
+        var loadQueue = new Hilo3d.LoadQueue([{
+            type: 'CubeTexture',
+            images: [
+                'UI/uv/1.jpg',
+                'UI/uv/2.jpg',
+                'UI/uv/3.jpg',
+                'UI/uv/4.jpg',
+                'UI/uv/5.jpg',
+                'UI/uv/6.jpg'
+            ]
+            },{
+            name: 'JPN',
+            isUnQuantizeInShader: false,
+            useInstanced: true,
+            //src: 'https://ossgw.alicdn.com/tmall-c3/tmx/8982fc2435524dc0cc4176362009b5c6.gltf'
+            src: 'https://ossgw.alicdn.com/tmall-c3/tmx/c926c2d94de5690f5c06c19e283f07b9.gltf'
+            }]).on('complete', function () {
+ 
+            var result = loadQueue.getAllContent();
+            obj_xwj =result[1].node;
+
+
+            if(!typeAr){
+                obj_xwj.rotationX = 49;
+                obj_xwj.rotationY = -23;
+                obj_xwj.rotationZ = -20;
+                obj_xwj.x = 0;
+                obj_xwj.y = 110;
+            }else if(typeAr){
+                //1
+//                stage.setScale(0.22);
+//                stage.x = -5.0;
+//                stage.y = -57.5;
+//                stage.z = -6.5;
+//                stage.rotationX = 126.43;
+//                stage.rotationY = -88.5;
+//                stage.rotationZ = -121.5;
+
+                //2
+                stage.setScale(0.24);
+                stage.x = 13.39;
+                stage.y = -66.53;
+                stage.z = -9.20;
+                stage.rotationX = 38.57;
+                stage.rotationY = -85.39;
+                stage.rotationZ = -28.29;
+            }
+
+
+//            var ax = new Hilo3d.AxisHelper();
+//            ax.setScale(100);
+//
+//            var ax1 = new Hilo3d.AxisHelper();
+//            ax1.x = 10;
+//            ax1.setScale(1000);
+//
+//            stage.addChild(ax);
+//            obj_xwj.addChild(ax1);
+
+
+            stage.addChild(obj_xwj);
+            //debugger;
+            //obj_xwj.children[0].material.wireframe = true;
+
+
+
+            //获取obj和设置初始化数据
+            obj_gaizi = obj_xwj.getChildByName("gaizi");
+            obj_gaizi.rotationX = -90;
+            obj_uv = obj_xwj.getChildByName("xiwan_tex");
+            obj_uv.visible = false;
+            obj_uvpng = obj_uv.getChildByName("xiwan3");
+            obj_uvpng2 = obj_uv.getChildByName("xiwan2");
+            obj_water = obj_xwj.getChildByName("water1");
+            obj_water.y = 31.399;
+            obj_water.children[0].material.transparency = 0.4;
+            obj_water.visible = false;
+            obj_wanjia = obj_xwj.getChildByName("wanjia");
+            obj_fruit = obj_xwj.getChildByName("fruit");
+            obj_fruit.visible = false;
+            obj_blinn = obj_xwj.getChildByName("blinn");
+            obj_blinn.visible = false;
+            obj_chaoshengbo = obj_xwj.getChildByName("chaoshengbo_g");
+            obj_chaoshengbo.visible = false;
+
+            mesh_honggan = obj_xwj.getChildByName("honggan").children[0];
+            mesh_honggan.material.transparent = true;
+            mesh_honggan.material.transparency = 0;
+            mesh_pan = obj_xwj.getChildByName("pan").children[0];
+            mesh_uvpng = obj_uv.getChildByName("xiwan3").children[0];
+            mesh_uvpng.material.transparent = true;
+            mesh_uvpng.material.transparency = 1;
+            mesh_wood = obj_xwj.getChildByName("desk_wood").children[0];
+            mesh_wood.material.transparent = true;
+            mesh_wood.material.transparency = 0.5;
+            mesh_wood.material.lightType = 'NONE';
+
+
+            var boxMap = result[0];
+            var material = new Hilo3d.BasicMaterial({
+                diffuse: new Hilo3d.Color(0.45, 0.45, 0.45),
+                skyboxMap: boxMap,
+                // refractRatio: 1/1.5,
+                refractivity: 0.4,
+                reflectivity: 0.1,
+                ambient: new Hilo3d.Color(0.19, 0.19, 0.19),
+                specular: new Hilo3d.Color(1.0, 1.0, 1.0),
+                shininess: 10 
+            });
+            // material.specular = new Hilo3d.Color(0.2);
+            // material.shininess = 80;
+            // obj_shuilongtou.children[0].material = material;
+            obj_xwj.getChildByName("water_tank").children[0].material = material;
+
+            //var mesh_shuilongtou = obj_xwj.getChildByName("shuilongtou").children[0];
+            //mesh_shuilongtou.material = material;
+            //mesh_shuilongtou.material.diffuse = new Hilo3d.Color(0.2, 0.2, 0.2);
+            //mesh_shuilongtou.material.skyboxMap = boxMap;
+            //mesh_shuilongtou.material.refractivity = 0.9;
+            //mesh_shuilongtou.material.reflectivity = 0.9;
+            //mesh_shuilongtou.material.ambient = new Hilo3d.Color(0.19, 0.19, 0.19);
+            // mesh_shuilongtou.material.specular = new Hilo3d.Color(0.19, 0.19, 0.19);
+            // mesh_shuilongtou.material.shininess = 10;
+ 
+            var mesh_gaizi = obj_xwj.getChildByName("gaizi").children[0];
+            mesh_gaizi.material = material;
+
+            var mesh_caozuoban = obj_xwj.getChildByName("caozuoban").children[0];
+            mesh_caozuoban.material.skyboxMap = boxMap;
+            mesh_caozuoban.material.refractivity = 0.4;
+            mesh_caozuoban.material.reflectivity = 0.1;
+            mesh_caozuoban.material.ambient = new Hilo3d.Color(0.19, 0.19, 0.19);
+            mesh_caozuoban.material.specular = new Hilo3d.Color(0.19, 0.19, 0.19);
+            mesh_caozuoban.material.shininess = 10;
+            var obj_desk = obj_xwj.getChildByName("desk_wood");
+            obj_desk.children[0].material.specular = new Hilo3d.Color(0.2, 0.2, 0.2);
+            obj_desk.children[0].material.shininess = 130;
+
+
+            if(typeAr){
+                //new SRTControls(stage);
+            }else{
+                new OrbitControls(stage,{
+                    isLockZ: true
+                })
+            }
+
+
+            //loading结束
+            setTimeout(loadingHide,2500);
+
+        }).start();
+
+
+        stage.addChild(container);
+
+        function updateFrameData(frameData) {
+
+
+            if (frameData.length === 2) {
+                //640 * 480, 320 * 240
+                // console.log("updateFrameData pixelFormat:", frameData[0].format, frameData[1].format)
+                // console.log("updateFrameData", frameData[0].width,frameData[0].height,frameData[1].width,frameData[1].height);
+
+                mesh.material.y_texture.width = frameData[0].width;
+                mesh.material.y_texture.height = frameData[0].height;
+                mesh.material.y_texture.data = new Uint8Array(frameData[0].data);
+
+                mesh.material.uv_texture.width = frameData[0].width / 2;
+                mesh.material.uv_texture.height = frameData[0].height / 2;
+                mesh.material.uv_texture.data = new Uint8Array(frameData[1].data);
+
+
+                try{
+                    deR = JSON.parse(frameData[0].result);
+                }
+                catch (e){
+                    console.log(e);
+                }
+
+
+                if (deR && deR.state == 2) {
+                    camera && camera.updateARMatrix(deR.viewMatrix, deR.projectionMatrix);
+                    $result.innerText = "识别到" ;
+                    $guideLogo.style.display = "none";
+                    //obj_xwj.visible = true;
+                    if(typeAr){
+                        if (obj_xwj)
+                            obj_xwj.visible = true;
+                    }
+
+                } else {
+                    $result.innerText = "识别不到" ;
+
+                    //obj_xwj.visible = false;
+                    if(typeAr){
+                        $guideLogo.style.display = "block";
+                        if (obj_xwj)
+                            obj_xwj.visible = false;
+                    }
+                }
+
+                //同步画相机.
+                ticker._tick();
+            }
+        }
+
+        var deR;
+        
+
+        function start(result) {
+            console.log("EVENT_SESSION_START");
+            var detector = arSession.setDetector("MBTDetector");
+            detector.setMarkers([
+                "https://dtmall-tel.alicdn.com/minsk/online/fileware/201710/8e900ce8-e196-4cf7-9c39-0a1771beafb9"
+            ]);
+
+
+            animate();
+        }
+
+        registerAR(start, function(){})
+
+        function animate() {
+            if (arSession && arSession.isDirty) {
+
+
+                var frame = arSession.getCurrentFrames();
+                updateFrameData(frame);
+            }
+
+            requestAnimationFrame(animate);
+            // setTimeout(animate, 2000);
+        };
+
+        //画一帧.
+        // stage.tick();
+        if(!typeAr){
+            ticker.start(true);
+        }
+    }
+    </script>
+
+
+    <script>
+        function waterAniend(type){
+            if(type == 'btn1'){
+                Hilo3d.Tween.to(mesh_honggan.material, {
+                    transparency: 0.4,
+                },{
+                    duration: 1000,
+                    delay: 500,
+                    reverse : true,
+                    repeat : 2,
+                    onComplete: function() {
+                        opengaizi('btn1');
+                    }
+                })
+            }else if(type == 'btn2'){
+                opengaizi('btn2');
+            }
+        }
+
+        function  opengaizi(type){
+            var mesh_caozuoban = obj_xwj.getChildByName("caozuoban").children[0];
+            mesh_caozuoban.material.transparent = true;
+            Hilo3d.Tween.to(mesh_caozuoban.material, {
+                transparency: 1
+            }, {
+                duration: 1000,
+                delay: 0,
+            })
+
+            //var obj_gaizi = obj_xwj.getChildByName("gaizi");
+            Hilo3d.Tween.to(obj_gaizi, {
+                rotationX: -90
+            }, {
+                duration: 1000,
+                delay: 1000,
+                onComplete: function() {
+                    obj_blinn.visible = true;
+                    setTimeout(function(){
+                        obj_blinn.visible = false;
+                        $('#btn1_up').show();
+                        $('#btn1_down').hide();
+                        $('#btn2_up').show();
+                        $('#btn2_down').hide();
+
+                        if(type == 'btn1') {
+                            $('#hint1').addClass('fadeOutUp');
+                            $('#hint1').one('webkitAnimationEnd mozAnimationEnd MSAnimationEnd oanimationend animationend', function () {
+                                $('#hint1').hide();
+                                $('#hint1').removeClass('fadeInDown fadeOutUp');
+                                $('#hint1').unbind();
+                                click_flag = true;
+                            });
+                        }else if(type == 'btn2') {
+                            $('#hint2').addClass('fadeOutUp');
+                            $('#hint2').one('webkitAnimationEnd mozAnimationEnd MSAnimationEnd oanimationend animationend', function () {
+                                $('#hint2').hide();
+                                $('#hint2').removeClass('fadeInDown fadeOutUp');
+                                $('#hint2').unbind();
+                                click_flag = true;
+                            });
+                        }
+                    },1500)
+                }
+            })
+        }
+
+        function closegaizi(type){
+            //盖子
+            //var obj_gaizi = obj_xwj.getChildByName("gaizi");
+            obj_gaizi.rotationX = -90;
+            Hilo3d.Tween.to(obj_gaizi, {
+                rotationX: 0
+            }, {
+                duration: 1000,
+                delay: 500,
+                onComplete: function() {
+                    if(type == 'btn1'){
+                        obj_wanjia.visible = true;
+                        obj_fruit.visible =false;
+                    }else if(type == 'btn2'){
+                        obj_wanjia.visible = false;
+                        obj_fruit.visible =true;
+                    }
+                }
+            })
+
+            var mesh_caozuoban = obj_xwj.getChildByName("caozuoban").children[0];
+            mesh_caozuoban.material.transparent = true;
+            Hilo3d.Tween.to(mesh_caozuoban.material, {
+                transparency:0.5
+            }, {
+                duration: 1000,
+                delay: 2000,
+                onComplete: function() {
+                    //水动画
+                    obj_water.visible = true;
+                    Hilo3d.Tween.to(obj_water, {y: 62.859}, {duration: 2000, delay: 500,
+                        onComplete: function() {
+                            obj_uv.visible = true;
+                            if(type == 'btn1'){
+                                obj_uvpng.visible = false;
+                                Hilo3d.Tween.to(obj_uv, {
+                                    rotationY: -720,
+                                }, {
+                                    duration: 5000,
+                                    delay:0,
+                                    repeat: 1,
+                                    onComplete: function() {
+                                        obj_uv.visible = false;
+                                        obj_uv.rotationY = 0;
+                                        obj_uvpng2.rotationY = 0;
+                                        //替换贴图
+                                        mesh_pan.material.diffuse = new Hilo3d.LazyTexture({
+                                            crossOrigin: true,
+                                            src: 'UI/pan_clean.jpg'
+                                        })
+                                    }
+                                })
+                                Hilo3d.Tween.to(obj_uvpng2, {
+                                    rotationY: -360,
+                                }, {
+                                    duration: 5000,
+                                    delay:0,
+                                    repeat: 1,
+                                })
+                                Hilo3d.Tween.to(obj_water, {y: 31.399}, {duration: 2000, delay: 0,reverse : true,repeat:1,
+                                    onComplete: function() {
+
+                                    }
+                                })
+                                Hilo3d.Tween.to(obj_water, {y: 31.399}, {duration: 2000, delay: 8000,
+                                    onComplete: function() {
+                                        obj_water.visible = false;
+                                        waterAniend(type);
+                                    }
+                                })
+                            }else if(type == 'btn2'){
+                                obj_chaoshengbo.visible = true;
+                                obj_uvpng.visible = true;
+                                Hilo3d.Tween.to(obj_uv, {
+                                    rotationY: -360,
+                                }, {
+                                    duration: 2000,
+                                    delay:0,
+                                    repeat: 1,
+                                    onComplete: function() {
+                                        obj_uv.visible = false;
+                                        obj_uv.rotationY = 0;
+                                        obj_uvpng2.rotationY = 0;
+                                        mesh_uvpng.material.transparency = 1;
+                                        obj_chaoshengbo.visible = false;
+                                        Hilo3d.Tween.to(obj_water, {y: 31.399}, {duration: 2000, delay: 500,
+                                            onComplete: function() {
+                                                obj_water.visible = false;
+                                                waterAniend(type);
+                                            }
+                                        })
+                                    }
+                                })
+                                Hilo3d.Tween.to(obj_uvpng2, {
+                                    rotationY: -720,
+                                }, {
+                                    duration: 2000,
+                                    delay:0,
+                                    repeat: 1,
+                                })
+                                Hilo3d.Tween.to(mesh_uvpng.material, {
+                                    transparency: 0
+                                }, {
+                                    duration: 3000,
+                                    delay: 0,
+                                    onComplete: function() {
+                                        console.log('complete');
+                                    }
+                                })
+                            }
+                        }
+                    })
+                }
+            })
+        }
+
+        $('#btn1_up').click(function(){
+            if(click_flag){
+                click_flag = false;
+                closegaizi('btn1');
+                $('#btn1_up').hide();
+                $('#btn1_down').show();
+                $('#hint1').show();
+                $('#hint2').hide();
+                $('#btn2_down').hide();
+                $('#btn2_up').show();
+
+                $('#hint1').show();
+                $('#hint1').addClass('fadeInDown')
+            }
+        })
+
+        $('#btn2_up').click(function(){
+            if(click_flag) {
+                click_flag = false;
+                closegaizi('btn2');
+                $('#btn2_up').hide();
+                $('#btn2_down').show();
+                $('#hint2').show();
+                $('#hint1').hide();
+                $('#btn1_down').hide();
+                $('#btn1_up').show();
+
+                $('#hint2').show();
+                $('#hint2').addClass('fadeInDown')
+            }
+        })
+
+        $('#AR').click(function(){
+            var old_url = window.location.href;
+            var new_url = old_url.split("?")[0] + '?typeAr';
+            console.log(new_url);
+            window.location.href = new_url;
+        })
+
+        $('#3D').click(function(){
+            var old_url = window.location.href;
+            var new_url = old_url.split("?")[0];
+            console.log(new_url);
+            window.location.href = new_url;
+            //window.location.reload();
+        })
+
+
+    </script>
+</body>
+
+</html>

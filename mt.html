@@ -1,0 +1,1220 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, user-scalable=no, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0">
+    <title>Hilo3d YUV 视频流渲染</title>
+    <link rel="stylesheet" href="css/animate.min.css">
+    <style type="text/css">
+    * {
+        -webkit-tap-highlight-color: rgba(0, 0, 0, 0);
+    }
+
+    html,
+    body {
+        padding: 0;
+        margin: 0;
+        overflow: hidden;
+    }
+
+    #container {
+        position: absolute;
+        width: 100%;
+        height: 100%;
+        top: 0;
+        left: 0;
+        overflow: hidden;
+    }
+
+    #result {
+        position: absolute;
+        left: 100px;
+        bottom: 10px;
+        color: red;
+        font-size: 20px;
+        display: none;
+    }
+
+    #back {
+        position: absolute;
+        left: 10px;
+        top: 10px;
+        z-index: 10000000;
+        width: 50px;
+        height: 50px;
+        text-align: center;
+    }
+
+    #guideLogo{
+        z-index: 10000;
+        position: absolute;
+        left: 50%;
+        margin-left: -256px;
+        top: 50%;
+        margin-top: -190px;
+        width: 70%;
+        pointer-events:none;
+        display: block;
+    }
+
+
+    </style>
+</head>
+
+<body>
+    <div id="container"></div>
+    <img id="guideLogo" src="https://gw.alicdn.com/tfs/TB1.aLGnMoQMeJjy1XaXXcSsFXa-1708-1020.png?v=1"/>
+    <div id="result">XXXXX</div>
+    <!-- <div id="back">回首页</div> -->
+    <img id="back" src="UI/back.png"/>
+
+    <img id="btn1_normal" style="position:absolute;width: 8%;bottom: 20px;left: 30%;"  src="UI/auto_normal.png"/>
+    <img id="btn1_down" style="position:absolute;width: 8%;bottom: 20px;left: 30%;display: none"  src="UI/auto_down.png"/>
+
+    <img id="btn2_normal" style="position:absolute;width: 8%;bottom: 20px;left: 48%;"  src="UI/intelligent_normal.png"/>
+    <img id="btn2_down" style="position:absolute;width: 8%;bottom: 20px;left: 48%;display: none"  src="UI/intelligent_down.png"/>
+
+    <img id="btn3_normal" style="position:absolute;width: 8%;bottom: 20px;left: 66%;"  src="UI/wash_normal.png"/>
+    <img id="btn3_down" style="position:absolute;width: 8%;bottom: 20px;left: 66%;display: none"  src="UI/wash_down.png"/>
+    <img id="hint1" style="position:absolute;width: 35%;top: 30%;left: 3%;display: none" class="animated" src="UI/hint/zbq1.png"/>
+    <img id="hint2" style="position:absolute;width: 35%;top: 30%;left: 3%;display: none" class="animated" src="UI/hint/zbq2.png"/>
+    <img id="hint3" style="position:absolute;width: 35%;top: 30%;left: 3%;display: none" class="animated" src="UI/hint/zbq3.png"/>
+    <img id="38l" style="position:absolute;width: 16%;top: 44%;left: 10%;display: none" class="animated"  src="UI/hint/38l.png"/>
+    <img id="360" style="position:absolute;width: 19%;top: 54%;left: 8%;display: none"  class="animated"  src="UI/hint/360.png"/>
+
+    <img src="UI/wifi/wifi__0.png" id="wifi" style="width:6%;position:absolute;top:5%;left:50%;display: none;" >
+
+    <img id="3D" style="position:absolute;width: 8%;bottom: 33px;right: 4%;display: block"  src="UI/3D.png"/>
+    <img id="AR" style="position:absolute;width: 8%;bottom: 33px;right: 4%;display: none"  src="UI/AR.png"/>
+
+    <div id="loading">
+        <img id="load_bg" style="position:absolute;width: 100%;height: 100%;display: block;z-index: 10001"  src="UI/loading.png"/>
+        <img id="load_gif" style="position:absolute;width: 8%;left: 44%;top: 40%;display: block;z-index: 10001"  src="UI/loading.gif"/>
+    </div>
+
+    <!--<script src="//g.alicdn.com/tmapp/animation-data/4.1.37/jc/tools/vconsole.min.js"></script>-->
+    <script src="//g.alicdn.com/hilo/Hilo3d/1.5.5/Hilo3d.js"></script>
+    <script src="./js/stats.js"></script>
+    <script src="//g.alicdn.com/tmapp/assetswho/1.0.9/js/SRTControls.js"></script>
+    <script src="//g.alicdn.com/tmapp/assetswho/1.0.9/js/OrbitControls.js"></script>
+    <script src="./js/arSetup57.js?t=91"></script>
+    <script src="./js/ARCamera.js?t=94"></script>
+
+    <script src="My_js/jquery.min.js"></script>
+    <script src="My_js/util.js"></script>
+
+    <script>
+
+    var obj_mt;
+    var obj_gaizi;
+    var obj_yiceng;
+    var obj_xuanwo;
+    var mesh_zhuti; //马桶主体
+    var mesh_gaizi; //马桶盖子
+    var mesh_yiceng; //漩涡uv
+    var mesh_xuanwo; //漩涡uv
+
+    var yiceng_alpha_0 = false;
+    var yiceng_alpha_1 = false;
+    var xuanwo_alpha_0 = false;
+    var xuanwo_alpha_1 = false;
+
+    var mesh_jiantou1;
+    var mesh_jiantou2;
+    var mesh_jiantou3;
+    var mesh_jiantou4;
+    var mesh_jiantou5;
+    var mesh_jiantou6;
+    var mesh_jiantou7;
+    var mesh_jiantou8;
+    var mesh_jiantou9;
+    var mesh_jiantou10;
+    var mesh_jiantou11;
+    var mesh_jiantou12;
+    var mesh_jiantou13;
+    var mesh_jiantou14;
+    var mesh_jiantou15;
+	
+	var obj_penshui, obj_baohumo;
+	var mesh_penshui, ani_penshui = false;
+    var mesh_baohumo;
+
+    var click_flag = true;
+    var typeAr;
+
+    //判断打开方式
+    //console.log(gg.util.getUrlParam().typeAr);
+    if(location.search.indexOf("typeAr") > -1){
+        typeAr = true;
+        $('#guideLogo').show();
+        $('#AR').hide();
+        $('#3D').show();
+    }else{
+        typeAr = false;
+        $('#guideLogo').hide();
+        $('#AR').show();
+        $('#3D').hide();
+    }
+    console.log(typeAr);
+
+    function loadingHide(){
+        $("#loading").hide();
+    }
+
+    function getImageArrayBuffer(cb){
+        var oReq = new XMLHttpRequest();
+        oReq.open("GET", "https://gw.alicdn.com/tfs/TB1oey2d6ihSKJjy0FfXXbGzFXa-1450-1552.png", true);
+        oReq.responseType = "arraybuffer";
+
+        oReq.onload = function(oEvent) {
+            var arrayBuffer = oReq.response; 
+            if (arrayBuffer) {
+                var dF = new Uint8Array(arrayBuffer);
+            }
+        };
+        oReq.send(null);
+    }
+
+
+    window.onload = function() {
+        function $(id) {
+            return document.getElementById(id);
+        }
+        var $result = $("result");
+        var $guideLogo = $("guideLogo");
+
+        $("back").onclick = function(e) {
+            window.location.href = "https://pages.tmall.com/wow/lafite/act/arscan?spm=a312d.7832054.0.0.568e255TbSwC5"
+        }
+
+        // 640 * 480相机->  854 * 640.5
+        var innerWidth = window.innerWidth;
+        var innerHeight = window.innerWidth * 480 / 640;
+
+
+        // var innerHeight = 510; 
+
+        if(!typeAr){
+            var camera = new Hilo3d.PerspectiveCamera({
+                aspect: innerWidth / innerHeight,
+                far: 1000,
+                near: 0.1,
+                z: 600
+            });
+        }else if(typeAr){
+            var camera = new ARCamera();
+        }
+
+        var stage = new Hilo3d.Stage({
+            container: $('container'),
+            camera: camera,
+            clearColor: new Hilo3d.Color(0, 0, 0),
+            width: innerWidth,
+            height: innerHeight,
+            antialias :true
+        });
+
+        //854* 510
+        stage.viewport(0, 0, innerWidth, innerHeight);
+        stage.setOffset(0, 0);
+
+        console.log(window.innerWidth, window.innerHeight);
+
+
+        var renderer = stage.renderer;
+        var directionLight = new Hilo3d.DirectionalLight({
+            color: new Hilo3d.Color(0.3, 0.3, 0.3),
+            direction: new Hilo3d.Vector3(1, -1, -1),
+            amount: .1
+        }).addTo(stage);
+        var directionLight1 = new Hilo3d.DirectionalLight({
+            color: new Hilo3d.Color(0.3, 0.3, 0.3),
+            direction: new Hilo3d.Vector3(-1, -1, -1),
+            amount: .1
+        }).addTo(stage);
+
+
+        var ambientLight = new Hilo3d.AmbientLight({
+            color: new Hilo3d.Color(1, 1, 1),
+            amount: .5
+        }).addTo(stage);
+
+        var ticker = new Hilo3d.Ticker(60);
+        ticker.addTick(stage);
+        ticker.addTick(Hilo3d.Tween);
+        ticker.addTick(Hilo3d.Animation);
+
+        //var stats = new Stats(ticker, stage.renderer.renderInfo);
+        renderer.clearColor = new Hilo3d.Color(0, 0, 0, 1);
+
+
+        var container = new Hilo3d.Node();
+        var geometry = new Hilo3d.PlaneGeometry({
+            width: 2.0,
+            height: 2.0,
+            heightSegments: 1,
+            widthSegments: 1,
+        })
+
+        var aa = [];
+        for (var i = 0; i < 64 * 48; i++) {
+            aa[i] = 0;
+        }
+        var dF = new Uint8Array(aa);
+
+
+        var mesh = new Hilo3d.Mesh({
+            rotationX: 0,
+            geometry: geometry,
+            material: new Hilo3d.ShaderMaterial({
+                depthWrite: false,
+                depthTest: false,
+                y_texture: new Hilo3d.DataTexture({
+                    internalFormat: Hilo3d.constants.LUMINANCE,
+                    format: Hilo3d.constants.LUMINANCE,
+                    type: Hilo3d.constants.UNSIGNED_BYTE,
+                    data: dF
+                }),
+                uv_texture: new Hilo3d.DataTexture({
+                    internalFormat: Hilo3d.constants.LUMINANCE_ALPHA,
+                    format: Hilo3d.constants.LUMINANCE_ALPHA,
+                    type: Hilo3d.constants.UNSIGNED_BYTE,
+                    data: dF
+                }),
+                uniforms: {
+                    u_y: {
+                        get: function(mesh, material, programInfo) {
+                            return Hilo3d.semantic.handlerColorOrTexture(material.y_texture, programInfo.textureIndex);;
+                        }
+                    },
+                    u_uv: {
+                        get: function(mesh, material, programInfo) {
+                            return Hilo3d.semantic.handlerColorOrTexture(material.uv_texture, programInfo.textureIndex);;
+                        }
+                    }
+                },
+                attributes: {
+                    a_position: 'POSITION',
+                    a_texcoord0: 'TEXCOORD_0'
+                },
+                fs: 'precision HILO_MAX_FRAGMENT_PRECISION float;\
+                    varying vec2 v_texcoord0;\
+                    uniform sampler2D u_y;\
+                    uniform sampler2D u_uv;\
+                    const mat3 mm =  mat3(1, 1, 1,0,-0.39465,  2.03211, 1.13983, -0.58060,  0);\
+                    void main(void) {\
+                        mediump vec3 yuv;\
+                        vec3 rgb;\
+                        vec2 yuv_textcoord = vec2(v_texcoord0.x, 1.0 - v_texcoord0.y);\
+                        yuv.x = (texture2D(u_y, yuv_textcoord).r);\
+                        yuv.y = (texture2D(u_uv, yuv_textcoord).r - 0.5);\
+                        yuv.z = (texture2D(u_uv, yuv_textcoord).a - 0.5);\
+                        rgb = mm * yuv;\
+                        gl_FragColor = vec4(rgb, 1);\
+                    }',
+                vs: 'precision HILO_MAX_VERTEX_PRECISION float;\
+                    attribute vec3 a_position;\
+                    attribute vec2 a_texcoord0;\
+                    varying vec2 v_texcoord0;\
+                    void main(void) {\
+                        vec4 pos = vec4(a_position.x, a_position.y, 1.0, 1.0);\
+                        gl_Position = pos;\
+                        v_texcoord0 = a_texcoord0;\
+                    }'
+            })
+        });
+        container.addChild(mesh);
+
+        // var loader = new Hilo3d.GLTFLoader();
+        var loadQueue = new Hilo3d.LoadQueue([{
+                type: 'CubeTexture',
+                images: [
+                    'UI/uv/1.jpg',
+                    'UI/uv/2.jpg',
+                    'UI/uv/3.jpg',
+                    'UI/uv/4.jpg',
+                    'UI/uv/5.jpg',
+                    'UI/uv/6.jpg'
+                ]
+            }, {
+            name: 'JPN',
+            isUnQuantizeInShader: false,
+            useInstanced: true,
+            //src: 'https://ossgw.alicdn.com/tmall-c3/tmx/a150f381de4fcc53ded3a6ed72e98656.gltf'
+            //src: 'https://ossgw.alicdn.com/tmall-c3/tmx/201782f106dfd3c181eadad3331fafc5.gltf'
+            src: 'https://ossgw.alicdn.com/tmall-c3/tmx/c019ba729035b60dc9aaffc65b918f82.gltf'
+            }]).on('complete', function () {
+             
+            var result = loadQueue.getAllContent();
+            obj_mt = result[1].node;
+
+
+
+            if(!typeAr){
+                stage.setScale(0.35);
+                stage.y = 65;
+                stage.rotationY = -90;
+            }else if(typeAr){
+                //1
+//                stage.setScale(0.14);
+//                stage.x = -75.17;
+//                stage.y = -43.3;
+//                stage.z = -58.8;
+//                stage.rotationX = -179.73;
+//                stage.rotationY = 7.9 - 3.58;
+//                stage.rotationZ = 175.67;
+
+                //2
+//                stage.setScale(0.14);
+//                stage.x = -77.88;
+//                stage.y = -41.41;
+//                stage.z = -56.25;
+//                stage.rotationX = 178.48;
+//                stage.rotationY = -1.63;
+//                stage.rotationZ = 174.95;
+
+                stage.setScale(0.14);
+                stage.x = -76.64;
+                stage.y = -43.39;
+                stage.z = -58.61;
+                stage.rotationX = -179.74;
+                stage.rotationY = 1.71;
+                stage.rotationZ = 177.56;
+
+            }
+
+            stage.addChild(obj_mt);
+
+            //获取obj和设置初始化数据
+            obj_gaizi = obj_mt.getChildByName("TOTOzuobianqi_gaizi");
+            obj_gaizi.rotationZ = 0;
+            //obj_gaizi.visible = false;
+            obj_yiceng = obj_mt.getChildByName("shuitexiao_yiceng");
+            obj_xuanwo = obj_mt.getChildByName("shuitexiao_xuanwo");
+
+            mesh_jiantou1 = obj_mt.getChildByName("jiantou1").children[0];
+            mesh_jiantou1.material.transparent = true;
+            mesh_jiantou1.material.lightType = 'NONE';
+            mesh_jiantou1.material.transparency = 0;
+            mesh_jiantou2 = obj_mt.getChildByName("jiantou2").children[0];
+            mesh_jiantou2.material = mesh_jiantou1.material.clone();
+            mesh_jiantou3 = obj_mt.getChildByName("jiantou3").children[0];
+            mesh_jiantou3.material = mesh_jiantou1.material.clone();
+            mesh_jiantou4 = obj_mt.getChildByName("jiantou4").children[0];
+            mesh_jiantou4.material = mesh_jiantou1.material.clone();
+            mesh_jiantou5 = obj_mt.getChildByName("jiantou5").children[0];
+            mesh_jiantou5.material = mesh_jiantou1.material.clone();
+            mesh_jiantou6 = obj_mt.getChildByName("jiantou6").children[0];
+            mesh_jiantou6.material = mesh_jiantou1.material.clone();
+            mesh_jiantou7 = obj_mt.getChildByName("jiantou7").children[0];
+            mesh_jiantou7.material = mesh_jiantou1.material.clone();
+            mesh_jiantou8 = obj_mt.getChildByName("jiantou8").children[0];
+            mesh_jiantou8.material = mesh_jiantou1.material.clone();
+            mesh_jiantou9 = obj_mt.getChildByName("jiantou9").children[0];
+            mesh_jiantou9.material = mesh_jiantou1.material.clone();
+            mesh_jiantou10 = obj_mt.getChildByName("jiantou10").children[0];
+            mesh_jiantou10.material = mesh_jiantou1.material.clone();
+            mesh_jiantou11 = obj_mt.getChildByName("jiantou11").children[0];
+            mesh_jiantou11.material = mesh_jiantou1.material.clone();
+            mesh_jiantou12 = obj_mt.getChildByName("jiantou12").children[0];
+            mesh_jiantou12.material = mesh_jiantou1.material.clone();
+            mesh_jiantou13 = obj_mt.getChildByName("jiantou13").children[0];
+            mesh_jiantou13.material = mesh_jiantou1.material.clone();
+            mesh_jiantou14 = obj_mt.getChildByName("jiantou14").children[0];
+            mesh_jiantou14.material = mesh_jiantou1.material.clone();
+            mesh_jiantou15 = obj_mt.getChildByName("jiantou15").children[0];
+            mesh_jiantou15.material = mesh_jiantou1.material.clone();
+
+            mesh_zhuti = obj_mt.getChildByName("TOTOzuobianqi_dibu2").children[0];
+            mesh_zhuti.material.transparent = false;
+            mesh_zhuti.material.ambient = new Hilo3d.Color(0.19, 0.19, 0.19);
+            mesh_zhuti.material.diffuse = new Hilo3d.Color(1, 1, 1);
+            mesh_zhuti.material.specular = new Hilo3d.Color(1, 1, 1);
+            // mesh_zhuti.material.emission = new Hilo3d.Color(0.19, 0.19, 0.19);
+            mesh_zhuti.material.shininess = 40;
+
+            mesh_gaizi = obj_mt.getChildByName("TOTOzuobianqi_gaizi").children[0];
+            mesh_gaizi.material.transparent = false;
+
+            var boxMap = result[0];
+            mesh_zhuti.material.skyboxMap = boxMap;
+            mesh_zhuti.material.reflectivity = 0.01;
+            mesh_zhuti.material.refractivity = 0.1;
+            mesh_zhuti.material.ambient = new Hilo3d.Color(0.19, 0.19, 0.19);
+            //mesh_zhuti.material.diffuse = new Hilo3d.Color(0.8, 0, 0);
+            mesh_zhuti.material.specular = new Hilo3d.Color(1, 1, 1);
+            // mesh_zhuti.material.emission = new Hilo3d.Color(0.19, 0.19, 0.19);
+            mesh_zhuti.material.shininess = 40;
+
+            // mesh_gaizi.material = material;
+            mesh_gaizi.material.skyboxMap = boxMap;
+            mesh_gaizi.material.reflectivity = 0.01;
+            mesh_gaizi.material.refractivity = 0.1;
+            mesh_gaizi.material.ambient = new Hilo3d.Color(0.19, 0.19, 0.19);
+            mesh_gaizi.material.diffuse = new Hilo3d.LazyTexture({
+                //src : "https://ossgw.alicdn.com/tmall-c3/tmx/117719de343168c16cdafe8c2f5c4aab.jpg"
+                src : "UI/gaizi_texture.jpg"
+            })
+            mesh_gaizi.material.specular = new Hilo3d.Color(1, 1, 1);
+            // mesh_gaizi.material.emission = new Hilo3d.Color(0.19, 0.19, 0.19);
+            mesh_gaizi.material.shininess = 40;
+
+            var mesh_quan = obj_mt.getChildByName("TOTOzuobianqi_zuobiaokuang").children[0];
+            mesh_quan.material.skyboxMap = boxMap;
+            mesh_quan.material.reflectivity = 0.01;
+            mesh_quan.material.refractivity = 0.1;
+            mesh_quan.material.ambient = new Hilo3d.Color(0.19, 0.19, 0.19);
+            // mesh_quan.material.diffuse = new Hilo3d.Color(1, 1, 1);
+            mesh_quan.material.diffuse = new Hilo3d.LazyTexture({
+                //src : "https://ossgw.alicdn.com/tmall-c3/tmx/117719de343168c16cdafe8c2f5c4aab.jpg"
+                src : "UI/gaizi_texture.jpg"
+            })
+            mesh_quan.material.specular = new Hilo3d.Color(1, 1, 1);
+            // mesh_quan.material.emission = new Hilo3d.Color(0.19, 0.19, 0.19);
+            mesh_quan.material.shininess = 40;
+
+
+
+            var mesh_mianban = obj_mt.getChildByName("TOTOzuobianqi_mianban").children[0];
+            mesh_mianban.material.skyboxMap = boxMap;
+            mesh_mianban.material.reflectivity = 0.01;
+            mesh_mianban.material.refractivity = 0.1;
+            mesh_mianban.material.ambient = new Hilo3d.Color(0.19, 0.19, 0.19);
+            // mesh_mianban.material.diffuse = new Hilo3d.Color(1, 1, 1);
+            mesh_mianban.material.diffuse = new Hilo3d.LazyTexture({
+                //src : "https://ossgw.alicdn.com/tmall-c3/tmx/117719de343168c16cdafe8c2f5c4aab.jpg"
+                src : "UI/gaizi_texture.jpg"
+            })
+            mesh_mianban.material.specular = new Hilo3d.Color(1, 1, 1);
+            // mesh_mianban.material.emission = new Hilo3d.Color(0.19, 0.19, 0.19);
+            mesh_mianban.material.shininess = 40;
+
+            //UV动画
+            //第一层水
+            mesh_yiceng = obj_mt.getChildByName("shuitexiao_yiceng").children[0];
+            mesh_yiceng.time = 0;
+            mesh_yiceng.transparency = 0;
+            mesh_yiceng.delta = 0.0;
+            mesh_yiceng.material = new Hilo3d.ShaderMaterial({
+                transparent:true,
+                diffuse: new Hilo3d.LazyTexture({
+                    crossOrigin: true,
+                    src:'UI/uv/shui.jpg'
+                }),
+                uniforms: {
+                    u_diffuse: 'DIFFUSE',
+                    u_modelViewProjectionMatrix: 'MODELVIEWPROJECTION',
+                    u_time: {
+                        get: function(mesh, material, programInfo) {
+                            return mesh.time;
+                        }
+                    },
+                    u_transparency: {
+                        get: function(mesh, material, programInfo) {
+                            return mesh.transparency;
+                        }
+                    },
+                    u_delta: {
+                        get: function(mesh, material, programInfo) {
+                            return mesh.delta;
+                        }
+                    },
+                },
+                attributes: {
+                    a_position: 'POSITION',
+                    a_texcoord0: 'TEXCOORD_0'
+                },
+                fs: `
+                precision HILO_MAX_FRAGMENT_PRECISION float;
+                varying vec2 v_texcoord0;
+                uniform sampler2D u_diffuse;
+                vec4 u_gray = vec4(0.78,0.78,0.78,1);
+                uniform float u_time;
+                uniform float u_transparency;
+                uniform float u_delta;
+                void main(void) {
+                    float vOffset = u_time;
+                    vec4 diffuse = texture2D(u_diffuse, vec2(v_texcoord0.x + vOffset, v_texcoord0.y));
+                    //vec4 resultColor = mix(u_gray, diffuse, u_transparency);
+                    //gl_FragColor = resultColor;
+                    gl_FragColor = vec4(diffuse.rgb * u_delta, u_transparency);
+                }
+            `,
+                vs: `
+                precision HILO_MAX_VERTEX_PRECISION float;
+                attribute vec3 a_position;
+                attribute vec2 a_texcoord0;
+                uniform mat4 u_modelViewProjectionMatrix;
+                varying vec2 v_texcoord0;
+
+                void main(void) {
+                    vec4 pos = vec4(a_position, 1.0);
+                    gl_Position = u_modelViewProjectionMatrix * pos;
+                    v_texcoord0 = a_texcoord0;
+                }
+            `
+            })
+
+            //漩涡
+            mesh_xuanwo = obj_mt.getChildByName("shuitexiao_xuanwo").children[0];
+            mesh_xuanwo.degrees = 0;
+            mesh_xuanwo.transparency = 0;
+            mesh_xuanwo.delta = 0.0;
+            mesh_xuanwo.material = new Hilo3d.ShaderMaterial({
+                transparent:true,
+                diffuse: new Hilo3d.LazyTexture({
+                    crossOrigin: true,
+                    src:'UI/uv/xuanwo_1.jpg'
+                }),
+                uniforms: {
+                    u_diffuse: 'DIFFUSE',
+                    u_modelViewProjectionMatrix: 'MODELVIEWPROJECTION',
+                    u_degrees: {
+                        get: function(mesh, material, programInfo) {
+                            return mesh.degrees;
+                        }
+                    },
+                    u_transparency: {
+                        get: function(mesh, material, programInfo) {
+                            return mesh.transparency;
+                        }
+                    },
+                    u_delta: {
+                        get: function(mesh, material, programInfo) {
+                            return mesh.delta;
+                        }
+                    },
+                },
+                attributes: {
+                    a_position: 'POSITION',
+                    a_texcoord0: 'TEXCOORD_0'
+                },
+                fs: `
+                precision HILO_MAX_FRAGMENT_PRECISION float;
+                varying vec2 v_texcoord0;
+                uniform sampler2D u_diffuse;
+                vec4 u_gray = vec4(0.78,0.78,0.78,1);
+                uniform float u_degrees;
+                uniform float u_transparency;
+                uniform float u_delta;
+                void main(void) {
+                    vec4 diffuse = texture2D(u_diffuse, vec2((v_texcoord0.x - 0.5) * cos(u_degrees) - (v_texcoord0.y - 0.5) * sin(u_degrees),(v_texcoord0.x - 0.5) * sin(u_degrees) + (v_texcoord0.y - 0.5) * cos(u_degrees)));
+                    //vec4 resultColor = mix(u_gray, diffuse, u_transparency);
+                    //gl_FragColor = resultColor;
+                    gl_FragColor = vec4(diffuse.rgb * u_delta, u_transparency);
+                }
+            `,
+                vs: `
+                precision HILO_MAX_VERTEX_PRECISION float;
+                attribute vec3 a_position;
+                attribute vec2 a_texcoord0;
+                uniform mat4 u_modelViewProjectionMatrix;
+                varying vec2 v_texcoord0;
+
+                void main(void) {
+                    vec4 pos = vec4(a_position, 1.0);
+                    gl_Position = u_modelViewProjectionMatrix * pos;
+                    v_texcoord0 = a_texcoord0;
+                }
+            `
+            })
+
+            obj_baohumo = obj_mt.getChildByName("pensaitexiao_baohumo");
+            obj_baohumo.setScale(0.96);
+            obj_baohumo.y += 0.07;
+            obj_baohumo.visible = false;
+            mesh_baohumo = obj_baohumo.children[0];
+            mesh_baohumo.transparency = 0;
+            mesh_baohumo.time = 0;
+            mesh_baohumo.material = new Hilo3d.ShaderMaterial({
+                diffuse: new Hilo3d.LazyTexture({
+                    crossOrigin: true,
+                    src:'UI/uv/shuiwen.jpg'
+                }),
+                uniforms: {
+                    u_diffuse: 'DIFFUSE',
+                    u_modelViewProjectionMatrix: 'MODELVIEWPROJECTION',
+                    u_transparency: {
+                        get: function(mesh, material, programInfo) {
+                            return mesh.transparency;
+                        }
+                    },
+                    u_time: {
+                        get: function(mesh, material, programInfo) {
+                            return mesh.time;
+                        }
+                    }
+                },
+                attributes: {
+                    a_position: 'POSITION',
+                    a_texcoord0: 'TEXCOORD_0'
+                },
+                fs: `
+                    precision HILO_MAX_FRAGMENT_PRECISION float;
+                    varying vec2 v_texcoord0;
+                    uniform sampler2D u_diffuse;
+                    uniform float u_transparency;
+                    uniform float u_time;
+                    void main(void) {
+                        vec4 diffuse = texture2D(u_diffuse, vec2(v_texcoord0.x, v_texcoord0.y - u_time));
+                        gl_FragColor = vec4(diffuse.rgb * u_transparency, u_transparency);
+                    }
+                `,
+                vs: `
+                    precision HILO_MAX_VERTEX_PRECISION float;
+                    attribute vec3 a_position;
+                    attribute vec2 a_texcoord0;
+                    uniform mat4 u_modelViewProjectionMatrix;
+                    varying vec2 v_texcoord0;
+
+                    void main(void) {
+                        vec4 pos = vec4(a_position, 1.0);
+                        gl_Position = u_modelViewProjectionMatrix * pos;
+                        v_texcoord0 = a_texcoord0;
+                    }
+                `
+            });
+            mesh_baohumo.material.transparent = true;
+
+            obj_penshui = obj_mt.getChildByName("pensaitexiao_shuizhu");
+            mesh_penshui = obj_mt.getChildByName("pensaitexiao_shuizhu").children[0];
+            mesh_penshui.time = 0;
+            mesh_penshui.material = new Hilo3d.ShaderMaterial({
+                diffuse: new Hilo3d.LazyTexture({
+                    crossOrigin: true,
+                    src:'UI/uv/penshui.png'
+                }),
+                uniforms: {
+                    u_diffuse: 'DIFFUSE',
+                    u_modelViewProjectionMatrix: 'MODELVIEWPROJECTION',
+                    u_time: {
+                        get: function(mesh, material, programInfo) {
+                            return mesh.time;
+                        }
+                    },
+                    u_transparency:'TRANSPARENCY'
+                },
+                attributes: {
+                    a_position: 'POSITION',
+                    a_texcoord0: 'TEXCOORD_0'
+                },
+                fs: `
+                precision HILO_MAX_FRAGMENT_PRECISION float;
+                varying vec2 v_texcoord0;
+                uniform sampler2D u_diffuse;
+                uniform float u_time;
+                uniform float u_transparency;
+                void main(void) {
+                    float vOffset = u_time;
+                    vec4 diffuse = texture2D(u_diffuse, vec2(v_texcoord0.x, v_texcoord0.y - vOffset));
+                    gl_FragColor = vec4(diffuse.rgb * diffuse.a, diffuse.a);
+                }
+            `,
+                vs: `
+                precision HILO_MAX_VERTEX_PRECISION float;
+                attribute vec3 a_position;
+                attribute vec2 a_texcoord0;
+                uniform mat4 u_modelViewProjectionMatrix;
+                varying vec2 v_texcoord0;
+
+                void main(void) {
+                    vec4 pos = vec4(a_position, 1.0);
+                    gl_Position = u_modelViewProjectionMatrix * pos;
+                    v_texcoord0 = a_texcoord0;
+                }
+            `
+            });
+            mesh_penshui.material.transparent = true;
+
+            // new SRTControls(stage, {
+            //     isLockMove: true,
+            //     model: obj_mt
+            // });
+
+
+            if(typeAr){
+                //new SRTControls(stage);
+            }else{
+               new OrbitControls(stage,{
+                   isLockZ: true
+               })
+            }
+
+
+
+            //loading结束
+            setTimeout(loadingHide,2500);
+
+        }).start();
+
+
+        stage.addChild(container);
+
+        function updateFrameData(frameData) {
+            if (frameData.length === 2) {
+                //640 * 480, 320 * 240
+                // console.log("updateFrameData pixelFormat:", frameData[0].format, frameData[1].format)
+                // console.log("updateFrameData", frameData[0].width,frameData[0].height,frameData[1].width,frameData[1].height);
+
+                mesh.material.y_texture.width = frameData[0].width;
+                mesh.material.y_texture.height = frameData[0].height;
+                mesh.material.y_texture.data = new Uint8Array(frameData[0].data);
+
+                mesh.material.uv_texture.width = frameData[0].width / 2;
+                mesh.material.uv_texture.height = frameData[0].height / 2;
+                mesh.material.uv_texture.data = new Uint8Array(frameData[1].data);
+
+
+                try{
+                    deR = JSON.parse(frameData[0].result);
+                }
+                catch (e){
+                    console.log(e);
+                }
+
+
+                if (deR && deR.state == 2) {
+                    camera && camera.updateARMatrix(deR.viewMatrix, deR.projectionMatrix);
+                    //$result.innerText = "识别到,state=";
+                    $guideLogo.style.display = "none";
+                    if(typeAr){
+                         if (obj_mt)
+                             obj_mt.visible = true;
+                    }
+
+                } else {
+                    //$result.innerText = "识别不到,state=";
+
+                    if(typeAr){
+                        $guideLogo.style.display = "block";
+                        if (obj_mt)
+                            obj_mt.visible = false;
+                    }
+                }
+
+                //同步画相机.
+                ticker._tick();
+            }
+        }
+
+        var deR;
+
+        function start(result) {
+            console.log("EVENT_SESSION_START");
+            var detector = arSession.setDetector("MBTDetector");
+            detector.setMarkers([
+                "https://dtmall-tel.alicdn.com/minsk/online/fileware/201710/8f4e088b-584b-4107-a921-5a0b33030a3b"
+            ]);
+
+
+            animate();
+        }
+
+        registerAR(start, function(){})
+
+        function animate() {
+            if (arSession && arSession.isDirty) {
+
+
+                var frame = arSession.getCurrentFrames();
+                updateFrameData(frame);
+            }
+
+            if(mesh_yiceng){
+                mesh_yiceng.time += 0.01;
+
+                if(mesh_yiceng.time > 3.14) {
+                    mesh_yiceng.time = 0;
+                }
+            }
+
+            if(mesh_xuanwo){
+                mesh_xuanwo.degrees +=0.1;
+
+                if(mesh_xuanwo.degrees >360) {
+                    mesh_xuanwo.degrees = 0;
+                }
+            }
+
+            //水层1 渐显
+            if(yiceng_alpha_0){
+                mesh_yiceng.transparency +=0.01;
+                mesh_yiceng.delta +=0.01;
+
+                if(mesh_yiceng.delta > 0.5){
+                    mesh_yiceng.delta = 0.5;
+                }
+
+                if(mesh_yiceng.transparency > 0.5) {
+                    yiceng_alpha_0 = false;
+                }
+            }
+
+            //水层1 渐隐
+            if(yiceng_alpha_1){
+                mesh_yiceng.transparency -=0.01;
+                mesh_yiceng.delta -=0.01;
+
+                if(mesh_yiceng.delta < 0){
+                    mesh_yiceng.delta = 0;
+                }
+
+                if(mesh_yiceng.transparency < 0) {
+                    yiceng_alpha_1 = false;
+                }
+            }
+
+            //漩涡 渐显
+            if(xuanwo_alpha_0){
+                mesh_xuanwo.transparency +=0.01;
+                mesh_xuanwo.delta += 0.01;
+
+                if(mesh_xuanwo.delta > 0.5){
+                    mesh_xuanwo.delta = 0.5;
+                }
+
+                if(mesh_xuanwo.transparency > 0.5) {
+                    xuanwo_alpha_0 =false;
+                }
+            }
+
+            //漩涡 渐隐
+            if(xuanwo_alpha_1){
+                mesh_xuanwo.transparency -=0.01;
+                mesh_xuanwo.delta -= 0.01;
+
+                if(mesh_xuanwo.delta < 0){
+                    mesh_xuanwo.delta = 0;
+                }
+
+                if(mesh_xuanwo.transparency < 0) {
+                    xuanwo_alpha_1 =false;
+                }
+            }
+			
+			if(ani_penshui && mesh_penshui){
+                mesh_penshui.time += 0.03;
+
+                if(mesh_penshui.time > 1) {
+                    mesh_penshui.time = 0;
+                    ani_penshui = false;
+                    obj_penshui.visible = false;
+                    obj_baohumo.visible = true;
+                    mesh_baohumo.material.transparent = true;
+                    mesh_baohumo.transparency = 0.0;
+                    Hilo3d.Tween.to(mesh_baohumo, {transparency:0.7}, 
+                        {duration: 1500, delay:0, reverse: true, repeat: 0,
+                        onUpdate: function(ratio, tween) {
+                        },
+                        onComplete: function() {
+                            obj_baohumo.visible = false;
+                        }
+                    });
+                    Hilo3d.Tween.to(mesh_baohumo, {time:0.1}, 
+                        {duration: 1500, delay:0, reverse: true, repeat: 0,
+                        onUpdate: function(ratio, tween) {
+                        },
+                        onComplete: function() {
+                            obj_baohumo.visible = false;
+                        }
+                    });
+                }
+            }
+
+
+
+            requestAnimationFrame(animate);
+            // setTimeout(animate, 2000);
+        };
+
+        //画一帧.
+        // stage.tick();
+        if(!typeAr){
+            ticker.start(true);
+        }
+
+        animate();
+    }
+    </script>
+
+
+    <script>
+        var timeAni;
+
+        function btn1Ani(){
+            FrameAni();
+            Hilo3d.Tween.to(obj_gaizi, {
+                rotationZ: 110
+            }, {
+                duration: 2000,
+                delay: 3000,
+                onComplete: function() {
+                    $('#wifi').hide();
+                    Hilo3d.Tween.to(obj_gaizi, {
+                        rotationZ: 0
+                    }, {
+                        duration: 2000,
+                        delay: 2500,
+                        onComplete: function() {
+                            mesh_zhuti.material.transparent = true;
+                            Hilo3d.Tween.to(mesh_zhuti.material, {
+                                transparency: 0.5
+                            }, {
+                                duration: 1000,
+                                delay: 0,
+                                onComplete: function() {
+                                    flushAniStart("btn1");
+                                }
+                            })
+                        }
+                    })
+                }
+            })
+        }
+
+
+        function btn3Ani(){
+            mesh_gaizi.material.transparent = true;
+            Hilo3d.Tween.to(mesh_gaizi.material, {
+                transparency: 0.0
+            }, {
+                duration: 1000,
+                delay: 0,
+                onComplete: function() {
+                    flushAniStart("btn3");
+                }
+            })
+
+        }
+
+        function flushAniStart(type){
+            yiceng_alpha_0 = true;
+            setTimeout(function(){
+                xuanwo_alpha_0 = true;
+            },500)
+
+            if(type == "btn1"){
+                setTimeout("flushAniEnd('btn1')",1500)
+            }
+
+            if(type == "btn3"){
+                Hilo3d.Tween.to(mesh_jiantou1.material, {transparency: 1,}, {duration: 200, delay: 0})
+                Hilo3d.Tween.to(mesh_jiantou2.material, {transparency: 1,}, {duration: 200, delay: 200})
+                Hilo3d.Tween.to(mesh_jiantou3.material, {transparency: 1,}, {duration: 200, delay: 400})
+                Hilo3d.Tween.to(mesh_jiantou4.material, {transparency: 1,}, {duration: 200, delay: 600})
+                Hilo3d.Tween.to(mesh_jiantou5.material, {transparency: 1,}, {duration: 200, delay: 800})
+                Hilo3d.Tween.to(mesh_jiantou6.material, {transparency: 1,}, {duration: 200, delay: 1000})
+                Hilo3d.Tween.to(mesh_jiantou7.material, {transparency: 1,}, {duration: 200, delay: 1200})
+                Hilo3d.Tween.to(mesh_jiantou8.material, {transparency: 1,}, {duration: 200, delay: 1400})
+                Hilo3d.Tween.to(mesh_jiantou9.material, {transparency: 1,}, {duration: 200, delay: 1600})
+                Hilo3d.Tween.to(mesh_jiantou10.material, {transparency: 1,}, {duration: 200, delay: 1800})
+                Hilo3d.Tween.to(mesh_jiantou11.material, {transparency: 1,}, {duration: 200, delay: 2000})
+                Hilo3d.Tween.to(mesh_jiantou12.material, {transparency: 1,}, {duration: 200, delay: 2200})
+                Hilo3d.Tween.to(mesh_jiantou13.material, {transparency: 1,}, {duration: 200, delay: 2400})
+                Hilo3d.Tween.to(mesh_jiantou14.material, {transparency: 1,}, {duration: 200, delay: 2600})
+                Hilo3d.Tween.to(mesh_jiantou15.material, {transparency: 1,}, {duration: 200, delay: 2800,
+                    onComplete: function() {
+                        setTimeout("flushAniEnd('btn3')",1500)
+                    }})
+            }
+        }
+
+        function flushAniEnd(type){
+            yiceng_alpha_1 = true;
+            xuanwo_alpha_1 = true;
+
+            if(type == "btn1"){
+                Hilo3d.Tween.to(mesh_zhuti.material, {
+                    transparency: 1
+                }, {
+                    duration: 1000,
+                    delay: 1000,
+                    onComplete: function() {
+                        mesh_zhuti.material.transparent =false;
+                        StopAni();
+                        click_flag = true;
+                        $('#hint1').addClass('fadeOutLeft');
+                        $('#hint1').one('webkitAnimationEnd mozAnimationEnd MSAnimationEnd oanimationend animationend', function(){
+                            $('#hint1').hide();
+                            $('#hint1').removeClass('fadeOutLeft fadeInLeft');
+                            $('#hint1').unbind();
+                        });
+                    }
+                })
+            }
+
+            if(type == "btn3"){
+                Hilo3d.Tween.to(mesh_jiantou1.material, {transparency: 0,}, {duration: 700, delay: 0})
+                Hilo3d.Tween.to(mesh_jiantou2.material, {transparency: 0,}, {duration: 700, delay: 0})
+                Hilo3d.Tween.to(mesh_jiantou3.material, {transparency: 0,}, {duration: 700, delay: 0})
+                Hilo3d.Tween.to(mesh_jiantou4.material, {transparency: 0,}, {duration: 700, delay: 0})
+                Hilo3d.Tween.to(mesh_jiantou5.material, {transparency: 0,}, {duration: 700, delay: 0})
+                Hilo3d.Tween.to(mesh_jiantou6.material, {transparency: 0,}, {duration: 700, delay: 0})
+                Hilo3d.Tween.to(mesh_jiantou7.material, {transparency: 0,}, {duration: 700, delay: 0})
+                Hilo3d.Tween.to(mesh_jiantou8.material, {transparency: 0,}, {duration: 700, delay: 0})
+                Hilo3d.Tween.to(mesh_jiantou9.material, {transparency: 0,}, {duration: 700, delay: 0})
+                Hilo3d.Tween.to(mesh_jiantou10.material, {transparency: 0,}, {duration: 700, delay: 0})
+                Hilo3d.Tween.to(mesh_jiantou11.material, {transparency: 0,}, {duration: 700, delay: 0})
+                Hilo3d.Tween.to(mesh_jiantou12.material, {transparency: 0,}, {duration: 700, delay: 0})
+                Hilo3d.Tween.to(mesh_jiantou13.material, {transparency: 0,}, {duration: 700, delay: 0})
+                Hilo3d.Tween.to(mesh_jiantou14.material, {transparency: 0,}, {duration: 700, delay: 0})
+                Hilo3d.Tween.to(mesh_jiantou15.material, {transparency: 0,}, {duration: 700, delay: 0,
+                    onComplete: function() {
+                        Hilo3d.Tween.to(mesh_gaizi.material, {
+                            transparency: 1
+                        }, {
+                            duration: 1000,
+                            delay: 0,
+                            onComplete: function() {
+                                mesh_gaizi.material.transparent = false;
+                                StopAni();
+                                click_flag = true;
+                                $('#hint3').addClass('fadeOutLeft');
+                                $('#38l').addClass('fadeOutLeft');
+                                $('#360').addClass('fadeOutLeft');
+                                $('#hint3').one('webkitAnimationEnd mozAnimationEnd MSAnimationEnd oanimationend animationend', function(){
+                                    $('#hint3').hide();
+                                    $('#38l').hide();
+                                    $('#360').hide();
+                                    $('#hint3').removeClass('fadeOutLeft fadeInLeft');
+                                    $('#38l').removeClass('fadeOutLeft fadeInLeft');
+                                    $('#360').removeClass('fadeOutLeft fadeInLeft');
+                                    $('#hint3').unbind();
+                                });
+                            }
+                        })
+                }})
+            }
+        }
+
+        function StopAni(){
+            $('#btn1_down').hide();
+            $('#btn2_down').hide();
+            $('#btn3_down').hide();
+            $('#btn1_normal').show();
+            $('#btn2_normal').show();
+            $('#btn3_normal').show();
+        }
+
+        $('#btn1_normal').click(function(){
+            if(click_flag){
+                click_flag = false;
+                StopAni();
+                $('#btn1_normal').hide();
+                $('#btn1_down').show();
+                $('#wifi').show();
+
+                btn1Ani();
+                $('#hint1').show();
+                $('#hint1').addClass('fadeInLeft');
+            }
+        })
+
+        $('#btn2_normal').click(function(){
+            if(click_flag){
+                $('#hint2').show();
+                $('#hint2').addClass('fadeInLeft');
+                click_flag = false;
+            StopAni();
+            $('#btn2_normal').hide();
+            $('#btn2_down').show();
+            mesh_gaizi.material.transparent = true;
+            Hilo3d.Tween.to(mesh_gaizi.material, {
+                transparency: 0.0
+            }, {
+                duration: 1000,
+                delay: 0,
+                onComplete: function() {
+                    aniPenshuiStart();
+                }
+            })
+
+            setTimeout(function(){
+                aniPenshuiStart();
+            },5000)
+
+            setTimeout(function(){
+                Hilo3d.Tween.to(mesh_gaizi.material, {
+                    transparency: 1
+                }, {
+                    duration: 1000,
+                    delay: 0,
+                    onComplete: function() {
+                        mesh_gaizi.material.transparent = false;
+                        StopAni();
+                            click_flag = true;
+                            $('#hint2').addClass('fadeOutLeft');
+                            $('#hint2').one('webkitAnimationEnd mozAnimationEnd MSAnimationEnd oanimationend animationend', function(){
+                                $('#hint2').hide();
+                                $('#hint2').removeClass('fadeOutLeft fadeInLeft');
+                                $('#hint2').unbind();
+                            });
+                    }
+                })
+            },8300)
+            }
+        })
+
+        $('#btn3_normal').click(function(){
+            if(click_flag){
+                click_flag = false;
+            StopAni();
+            $('#btn3_normal').hide();
+            $('#btn3_down').show();
+
+            btn3Ani();
+                $('#hint3').show();
+                $('#hint3').addClass('fadeInLeft');
+                setTimeout(function(){
+                    $('#38l').show();
+                    $('#38l').addClass('fadeInLeft');
+                },1000)
+                setTimeout(function(){
+                    $('#360').show();
+                    $('#360').addClass('fadeInLeft');
+                },2000)
+            }
+        })
+
+        function aniPenshuiStart() {
+            ani_penshui = true;
+            obj_penshui.visible = true;
+        }
+
+        function FrameAni(){
+            var i = 0;
+            var times = 0;
+            var clock = setInterval(function(){
+                if(i == 11){
+                    i = 0
+                    times++;
+                }
+                var imgsrc = "UI/wifi/wifi__"+i+'.png';
+                $('#wifi').attr("src", imgsrc);
+                i++
+                if(times == 2){
+                    clearInterval(clock);
+                }
+            },125);
+
+        }
+
+        $('#AR').click(function(){
+            var old_url = window.location.href;
+            var new_url = old_url.split("?")[0] + '?typeAr';
+            console.log(new_url);
+            window.location.href = new_url;
+        })
+
+        $('#3D').click(function(){
+            var old_url = window.location.href;
+            var new_url = old_url.split("?")[0];
+            console.log(new_url);
+            window.location.href = new_url;
+        })
+
+    </script>
+</body>
+
+</html>
