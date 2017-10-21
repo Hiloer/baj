@@ -4,6 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, user-scalable=no, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0">
+    <meta name="data-spm" content="a2236">
     <title>Hilo3d YUV 视频流渲染</title>
     <link rel="stylesheet" href="css/animate.min.css">
     <style type="text/css">
@@ -62,7 +63,7 @@
     </style>
 </head>
 
-<body>
+<body data-spm ='10545328'>
     <div id="container"></div>
     <img id="guideLogo" src="https://gw.alicdn.com/tfs/TB1.aLGnMoQMeJjy1XaXXcSsFXa-1708-1020.png?v=1"/>
     <div id="result">XXXXX</div>
@@ -88,9 +89,10 @@
     <img id="3D" style="position:absolute;width: 8%;bottom: 33px;right: 4%;display: block"  src="UI/3D.png"/>
     <img id="AR" style="position:absolute;width: 8%;bottom: 33px;right: 4%;display: none"  src="UI/AR.png"/>
 
-    <div id="loading">
-        <img id="load_bg" style="position:absolute;width: 100%;height: 100%;display: block;z-index: 10001"  src="UI/loading.png"/>
-        <img id="load_gif" style="position:absolute;width: 8%;left: 44%;top: 40%;display: block;z-index: 10001"  src="UI/loading.gif"/>
+    <div id="loading" style="text-align: center">
+        <img id="load_bg" style="position:absolute;width: 100%;height: 100%;display: block;z-index: 10001"  src="https://gw.alicdn.com/tfs/TB1whFtpwMPMeJjy1XcXXXpppXa-854-510.png"/>
+        <p style="position: absolute;z-index: 10001;font-size: 38px;margin-left: auto;margin-right: auto;left:0;right: 0;top : 18%">正在为您加载AR(3D)商品展示</p>
+        <img id="load_gif" style="position:absolute;width: 8%;margin-left: auto;margin-right: auto;left:0 ;right: 0;top: 50%; display: block;z-index: 10001"  src="UI/loading.gif"/>
     </div>
 
     <!--<script src="//g.alicdn.com/tmapp/animation-data/4.1.37/jc/tools/vconsole.min.js"></script>-->
@@ -100,6 +102,7 @@
     <script src="//g.alicdn.com/tmapp/assetswho/1.0.9/js/OrbitControls.js"></script>
     <script src="./js/arSetup57.js?t=91"></script>
     <script src="./js/ARCamera.js?t=94"></script>
+    <script src="//g.alicdn.com/alilog/mlog/aplus_wap.js"></script>
 
     <script src="My_js/jquery.min.js"></script>
     <script src="My_js/util.js"></script>
@@ -1208,6 +1211,9 @@
         })
 
         $('#3D').click(function(){
+            if(goldlog){
+                goldlog.record('/arscan.arcode.bajswitch3d','EXP','','H1482418994');
+            }
             var old_url = window.location.href;
             var new_url = old_url.split("?")[0];
             console.log(new_url);
