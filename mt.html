@@ -4,6 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, user-scalable=no, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0">
+    <meta name="data-spm" content="a2236">
     <title>Hilo3d YUV 视频流渲染</title>
     <link rel="stylesheet" href="css/animate.min.css">
     <style type="text/css">
@@ -62,7 +63,7 @@
     </style>
 </head>
 
-<body>
+<body data-spm ='10545328'>
     <div id="container"></div>
     <img id="guideLogo" src="https://gw.alicdn.com/tfs/TB1.aLGnMoQMeJjy1XaXXcSsFXa-1708-1020.png?v=1"/>
     <div id="result">XXXXX</div>
@@ -100,6 +101,7 @@
     <script src="//g.alicdn.com/tmapp/assetswho/1.0.9/js/OrbitControls.js"></script>
     <script src="./js/arSetup57.js?t=91"></script>
     <script src="./js/ARCamera.js?t=94"></script>
+    <script src="//g.alicdn.com/alilog/mlog/aplus_wap.js"></script>
 
     <script src="My_js/jquery.min.js"></script>
     <script src="My_js/util.js"></script>
@@ -1208,6 +1210,9 @@
         })
 
         $('#3D').click(function(){
+            if(goldlog){
+                goldlog.record('/arscan.arcode.bajswitch3d','EXP','','H1482418994');
+            }
             var old_url = window.location.href;
             var new_url = old_url.split("?")[0];
             console.log(new_url);
